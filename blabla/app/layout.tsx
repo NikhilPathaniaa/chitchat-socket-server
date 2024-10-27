@@ -1,7 +1,5 @@
 import type { Metadata } from "next";
-import localFont from "next/font/local";
 import "./globals.css";
-import UserLists from "@/components/UserList/UserLists";
 
 export const metadata: Metadata = {
   title: "Create Next App",

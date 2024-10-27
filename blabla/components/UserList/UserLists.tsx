@@ -1,4 +1,5 @@
 import React from "react";
+import Navbar from "../Navbar";
 
 const UserLists = () => {
   return (
@@ -7,7 +8,7 @@ const UserLists = () => {
         Welcome Back,<span className="font-bold"> Jhon Show</span>🤙
       </h1>
 
-      <section className=" bg-white  rounded-[30px] w-[381px] h-[580px]">
+      <section className=" bg-white rounded-se-[30px] rounded-ss-[30px] w-[381px] h-[580px]">
         <div className="flex flex-col items-center justify-center p-10">
           <h1 className="text-3xl text-black font-bold">Your Lists</h1>
         </div>
@@ -50,6 +51,7 @@ const UserLists = () => {
           </li>
         </ul>
       </section>
+      <Navbar />
     </div>
   );
 };

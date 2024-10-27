@@ -6,9 +6,8 @@ export default function Home() {
   return (
     <>
       <main className="flex">
-        {/* <UserLists /> */}
+        <UserLists />
         <ChatWindow />
-        <section className="w-full h-96 border-2 border-black hidden">Hey</section>
       </main>
     </>
   );
