@@ -42,6 +42,15 @@ const SocketContext = createContext<SocketContextType>({
 
 export const useSocket = () => useContext(SocketContext);
 
+const getSocketUrl = () => {
+  if (typeof window === 'undefined') return 'http://localhost:3001';
+  
+  return process.env.NEXT_PUBLIC_SOCKET_URL || 
+    (process.env.NODE_ENV === 'production' 
+      ? window.location.origin 
+      : 'http://localhost:3001');
+};
+
 export function SocketProvider({ children }: { children: React.ReactNode }) {
   const [socket, setSocket] = useState<Socket | null>(null);
   const [username, setUsername] = useState<string | null>(null);
@@ -51,12 +60,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
 
   useEffect(() => {
-    const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || 
-      (process.env.NODE_ENV === 'production' 
-        ? window.location.origin 
-        : 'http://localhost:3001');
-
-    const newSocket = io(SOCKET_URL, {
+    const newSocket = io(getSocketUrl(), {
       autoConnect: false,
       transports: ['websocket', 'polling'],
     });
@@ -71,7 +75,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       console.log('Disconnected from server');
     });
 
-    newSocket.on('message', (message: Message) => {
+    newSocket.on('private_message', (message: Message) => {
       setMessages(prev => [...prev, message]);
     });
 
@@ -95,21 +99,12 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  const login = useCallback((newUsername: string) => {
-    if (!socket || !newUsername.trim()) return;
-
-    // Connect socket if not connected
-    if (!socket.connected) {
+  const login = useCallback((username: string) => {
+    if (socket && username) {
+      setUsername(username);
+      socket.auth = { username };
       socket.connect();
     }
-
-    // Set username first
-    setUsername(newUsername);
-
-    // Emit login event
-    socket.emit('login', { username: newUsername });
-
-    console.log('Login attempted with:', newUsername);
   }, [socket]);
 
   const sendMessage = useCallback(async (message: string, file?: File) => {
@@ -127,6 +122,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
           reader.onerror = reject;
           reader.readAsDataURL(file);
         });
+
         fileData = base64;
         fileName = file.name;
         fileType = file.type;
@@ -144,7 +140,11 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       fileType,
     };
 
-    socket.emit('private_message', { to: selectedUser, message: messageData });
+    socket.emit('private_message', {
+      to: selectedUser,
+      message: messageData,
+    });
+
     setMessages(prev => [...prev, messageData]);
   }, [socket, username, selectedUser]);
 
