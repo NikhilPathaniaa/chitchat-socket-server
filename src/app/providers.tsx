@@ -1,5 +1,11 @@
 'use client';
 
+import { SocketProvider } from '@/context/SocketContext';
+
 export default function Providers({ children }: { children: React.ReactNode }) {
-  return children;
+  return (
+    <SocketProvider>
+      {children}
+    </SocketProvider>
+  );
 }

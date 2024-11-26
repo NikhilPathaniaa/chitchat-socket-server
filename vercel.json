@@ -2,22 +2,18 @@
   "version": 2,
   "builds": [
     {
-      "src": "server.js",
+      "src": "src/server/server.js",
       "use": "@vercel/node"
     },
     {
-      "src": "next.config.js",
+      "src": "package.json",
       "use": "@vercel/next"
     }
   ],
   "rewrites": [
     {
       "source": "/socket.io/(.*)",
-      "destination": "/server.js"
-    },
-    {
-      "source": "/(.*)",
-      "destination": "/"
+      "destination": "/src/server/server.js"
     }
   ]
 }
