@@ -48,7 +48,7 @@ const getSocketUrl = () => {
   
   // For production, use the environment variable
   if (process.env.NODE_ENV === 'production') {
-    return process.env.NEXT_PUBLIC_SOCKET_URL || 'https://chitchat-socket.onrender.com';
+    return process.env.NEXT_PUBLIC_SOCKET_URL;
   }
   
   // For development, use localhost
