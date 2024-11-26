@@ -9,6 +9,7 @@ const app = express();
 const allowedOrigins = [
   'http://localhost:3000',
   'https://chitchat-le5v.vercel.app',
+  'https://chitchat-nikhilpathaniaa.vercel.app',
   /\.vercel\.app$/
 ];
 
@@ -29,6 +30,7 @@ app.use(cors({
     if (isAllowed) {
       callback(null, true);
     } else {
+      console.log('Blocked origin:', origin);
       callback(new Error('CORS not allowed'));
     }
   },
