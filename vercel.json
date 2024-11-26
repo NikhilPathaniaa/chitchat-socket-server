@@ -2,18 +2,8 @@
   "version": 2,
   "builds": [
     {
-      "src": "src/server/server.js",
-      "use": "@vercel/node"
-    },
-    {
       "src": "package.json",
       "use": "@vercel/next"
-    }
-  ],
-  "rewrites": [
-    {
-      "source": "/socket.io/(.*)",
-      "destination": "/src/server/server.js"
     }
   ]
 }

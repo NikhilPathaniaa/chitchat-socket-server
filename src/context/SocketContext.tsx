@@ -43,12 +43,16 @@ const SocketContext = createContext<SocketContextType>({
 export const useSocket = () => useContext(SocketContext);
 
 const getSocketUrl = () => {
-  if (typeof window === 'undefined') return 'http://localhost:3001';
+  // For server-side rendering, return a default value
+  if (typeof window === 'undefined') return '';
   
-  return process.env.NEXT_PUBLIC_SOCKET_URL || 
-    (process.env.NODE_ENV === 'production' 
-      ? window.location.origin 
-      : 'http://localhost:3001');
+  // For production, use the environment variable
+  if (process.env.NODE_ENV === 'production') {
+    return process.env.NEXT_PUBLIC_SOCKET_URL || 'https://chitchat-socket.onrender.com';
+  }
+  
+  // For development, use localhost
+  return 'http://localhost:3001';
 };
 
 export function SocketProvider({ children }: { children: React.ReactNode }) {

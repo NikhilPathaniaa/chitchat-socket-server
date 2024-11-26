@@ -7,13 +7,32 @@ const path = require('path');
 const app = express();
 
 // CORS configuration for both development and production
-const corsOrigin = process.env.NODE_ENV === 'production'
-  ? [process.env.VERCEL_URL || 'https://chitchat-nine.vercel.app', /\.vercel\.app$/]
-  : 'http://localhost:3000';
+const allowedOrigins = [
+  'http://localhost:3000',
+  'https://chitchat-le5v.vercel.app',
+  /\.vercel\.app$/
+];
 
 // Middleware
 app.use(cors({
-  origin: corsOrigin,
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    // Check if the origin is allowed
+    const isAllowed = allowedOrigins.some(allowedOrigin => {
+      if (allowedOrigin instanceof RegExp) {
+        return allowedOrigin.test(origin);
+      }
+      return allowedOrigin === origin;
+    });
+    
+    if (isAllowed) {
+      callback(null, true);
+    } else {
+      callback(new Error('CORS not allowed'));
+    }
+  },
   methods: ['GET', 'POST'],
   credentials: true
 }));
@@ -31,7 +50,7 @@ const server = http.createServer(app);
 // Socket.IO setup with error handling
 const io = new Server(server, {
   cors: {
-    origin: corsOrigin,
+    origin: allowedOrigins,
     methods: ['GET', 'POST'],
     credentials: true
   },
@@ -102,7 +121,7 @@ if (!fs.existsSync(path.join(__dirname, 'public'))) {
   fs.mkdirSync(path.join(__dirname, 'public'));
 }
 
-const port = process.env.PORT || 3001;
-server.listen(port, () => {
-  console.log(`Server running on port ${port}`);
+const PORT = process.env.PORT || 3001;
+server.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });
