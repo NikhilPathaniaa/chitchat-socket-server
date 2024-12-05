@@ -1,115 +1,95 @@
 'use client';
 
 import { useState } from 'react';
-import { Box, Button, Container, Paper, TextField, Typography } from '@mui/material';
-import { useSocket } from '@/context/SocketContext';
+import { useRouter } from 'next/navigation';
+import { Box, Button, TextField, Typography, Paper } from '@mui/material';
+import { useSocket } from '@/lib/socket/context';
+import toast from 'react-hot-toast';
+import Cookies from 'js-cookie';
 
 export default function UserLogin() {
   const [username, setUsername] = useState('');
-  const { login } = useSocket();
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+  const router = useRouter();
+  const { socket, connect } = useSocket();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (username.trim()) {
-      login(username.trim());
+    
+    if (!username.trim()) {
+      setError('Username is required');
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      setError('');
+
+      connect(username.trim());
+      Cookies.set('username', username.trim());
+      router.push('/chat/room');
+      toast.success('Connected successfully!');
+    } catch (err) {
+      setError('An error occurred while connecting');
+      console.error('Connection error:', err);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
-    <Container maxWidth="sm" sx={{ height: '100vh', display: 'flex', alignItems: 'center' }}>
-      <Paper 
-        elevation={3}
-        sx={{ 
-          width: '100%',
-          p: 4,
-          textAlign: 'center',
-          background: '#ffffff',
-          borderRadius: 2,
-          position: 'relative',
-          overflow: 'hidden'
-        }}
+    <Paper 
+      elevation={3}
+      sx={{
+        p: 4,
+        width: '100%',
+        maxWidth: 400,
+      }}
+    >
+      <Typography 
+        variant="h4" 
+        component="h1" 
+        gutterBottom 
+        align="center"
+        sx={{ mb: 4 }}
       >
-        <Typography 
-          variant="h4" 
-          component="h1" 
-          gutterBottom
-          sx={{ 
-            fontWeight: 600,
-            color: 'text.primary',
-            mb: 3
-          }}
-        >
-          Welcome to ChitChat
-        </Typography>
+        Welcome to ChitChat
+      </Typography>
 
-        <Box
-          component="form"
-          onSubmit={handleSubmit}
-          sx={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 2,
-          }}
-        >
-          <TextField
-            fullWidth
-            label="Enter your username"
-            variant="outlined"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            autoFocus
-            sx={{
-              '& .MuiOutlinedInput-root': {
-                bgcolor: 'background.paper',
-              }
-            }}
-          />
-          <Button
-            type="submit"
-            variant="contained"
-            size="large"
-            disabled={!username.trim()}
-            sx={{
-              py: 1.5,
-              bgcolor: 'primary.main',
-              color: 'primary.contrastText',
-              '&:hover': {
-                bgcolor: 'primary.dark',
-              },
-            }}
-          >
-            Join Chat
-          </Button>
-        </Box>
-
-        <Box
-          sx={{
-            position: 'absolute',
-            width: '60px',
-            height: '60px',
-            background: 'linear-gradient(45deg, #7C3AED 30%, #C4B5FD 90%)',
-            top: '20%',
-            left: '10%',
-            opacity: 0.2,
-            zIndex: 0,
-            borderRadius: '50%'
-          }}
+      <form onSubmit={handleSubmit}>
+        <TextField
+          fullWidth
+          label="Enter your username"
+          variant="outlined"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+          error={!!error}
+          helperText={error}
+          disabled={isLoading}
+          sx={{ mb: 3 }}
         />
 
-        <Box
-          sx={{
-            position: 'absolute',
-            width: '80px',
-            height: '80px',
-            background: 'linear-gradient(45deg, #7C3AED 30%, #C4B5FD 90%)',
-            bottom: '20%',
-            right: '10%',
-            opacity: 0.2,
-            zIndex: 0,
-            borderRadius: '50%'
-          }}
-        />
-      </Paper>
-    </Container>
+        <Button
+          fullWidth
+          type="submit"
+          variant="contained"
+          size="large"
+          disabled={isLoading}
+          sx={{ mb: 2 }}
+        >
+          {isLoading ? 'Connecting...' : 'Join Chat'}
+        </Button>
+      </form>
+
+      <Typography 
+        variant="body2" 
+        color="text.secondary" 
+        align="center"
+        sx={{ mt: 2 }}
+      >
+        Start chatting with people around the world!
+      </Typography>
+    </Paper>
   );
 }

@@ -1,104 +1,74 @@
 'use client';
 
-import { Box, IconButton, Typography } from '@mui/material';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import { useSocket } from '@/context/SocketContext';
-import ChatMessage from './ChatMessage';
-import ChatInput from './ChatInput';
-import OnlineUsers from './OnlineUsers';
+import React from 'react';
+import { useSocket } from '@/lib/socket/context';
+import { Paper, Typography, Box } from '@mui/material';
+import { motion, AnimatePresence } from 'framer-motion';
+import ChatInput from '@/components/chat/ChatInput';
+import ChatMessage from '@/components/chat/ChatMessage';
+import { Message } from '@/lib/socket/context';
 
-export default function ChatPage() {
-  const { messages, username, selectedUser, setSelectedUser } = useSocket();
+const ChatPage = () => {
+  const { socket, messages } = useSocket();
 
-  const handleSelectUser = (username: string) => {
-    setSelectedUser(username);
-  };
+  if (!socket) {
+    return (
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          height: '100vh',
+          p: 3,
+        }}
+      >
+        <Typography variant="h6" color="text.secondary">
+          Connecting to chat...
+        </Typography>
+      </Box>
+    );
+  }
 
   return (
-    <Box
+    <Paper
+      elevation={0}
       sx={{
-        display: 'flex',
         height: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
         bgcolor: 'background.default',
+        borderRadius: 0,
       }}
     >
-      {/* Online Users List - Always visible on desktop, toggles on mobile */}
       <Box
         sx={{
-          width: { xs: selectedUser ? '0' : '100%', md: '300px' },
-          borderRight: 1,
-          borderColor: 'divider',
-          display: { xs: selectedUser ? 'none' : 'block', md: 'block' },
-          overflow: 'hidden',
-        }}
-      >
-        <OnlineUsers
-          selectedUser={selectedUser}
-          onSelectUser={handleSelectUser}
-        />
-      </Box>
-
-      {/* Chat Area - Shows when user is selected */}
-      <Box
-        sx={{
-          flex: 1,
-          display: { xs: selectedUser ? 'flex' : 'none', md: 'flex' },
+          flexGrow: 1,
+          overflowY: 'auto',
+          p: 2,
+          display: 'flex',
           flexDirection: 'column',
-          height: '100%',
-          position: 'relative',
         }}
       >
-        {/* Chat Header */}
-        <Box
-          sx={{
-            p: 2,
-            borderBottom: 1,
-            borderColor: 'divider',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 2,
-            bgcolor: 'background.paper',
-          }}
-        >
-          <IconButton 
-            sx={{ display: { xs: 'block', md: 'none' } }}
-            onClick={() => setSelectedUser(null)}
-          >
-            <ArrowBackIcon />
-          </IconButton>
-          {selectedUser && (
-            <Typography variant="h6">
-              {selectedUser}
-            </Typography>
-          )}
-        </Box>
-
-        {/* Messages Area */}
-        <Box
-          sx={{
-            flex: 1,
-            p: 2,
-            overflowY: 'auto',
-            display: 'flex',
-            flexDirection: 'column',
-          }}
-        >
-          {messages.map((message, index) => (
-            <ChatMessage
-              key={index}
-              message={message}
-              isOwnMessage={message.from === username}
-            />
+        <AnimatePresence initial={false}>
+          {messages.map((message: Message) => (
+            <motion.div
+              key={message.id}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              transition={{ duration: 0.2 }}
+            >
+              <ChatMessage
+                message={message}
+                isOwnMessage={message.username === socket.auth.username}
+              />
+            </motion.div>
           ))}
-        </Box>
-
-        {/* Chat Input */}
-        {selectedUser && (
-          <Box sx={{ p: 2, borderTop: 1, borderColor: 'divider' }}>
-            <ChatInput />
-          </Box>
-        )}
+        </AnimatePresence>
       </Box>
-    </Box>
+      <ChatInput />
+    </Paper>
   );
-}
+};
+
+export default ChatPage;

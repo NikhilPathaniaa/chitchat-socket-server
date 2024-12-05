@@ -1,14 +1,16 @@
+import { Poppins } from 'next/font/google'
 import './globals.css'
-import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
-import Providers from './providers'
+import { Providers } from '@/components/Providers'
+import RootLayoutClient from '@/components/RootLayoutClient'
+import { metadata } from './layout-metadata'
 
-const inter = Inter({ subsets: ['latin'] })
+const poppins = Poppins({ 
+  weight: ['300', '400', '500', '600', '700'],
+  subsets: ['latin'],
+  display: 'swap',
+})
 
-export const metadata: Metadata = {
-  title: 'ChitChat - Modern Chat Application',
-  description: 'A beautiful and modern chat application',
-}
+export { metadata }
 
 export default function RootLayout({
   children,
@@ -16,12 +18,12 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en">
-      <body className={inter.className}>
+    <html lang="en" className={poppins.className}>
+      <body>
         <Providers>
-          <main className="min-h-screen bg-background">
+          <RootLayoutClient>
             {children}
-          </main>
+          </RootLayoutClient>
         </Providers>
       </body>
     </html>
