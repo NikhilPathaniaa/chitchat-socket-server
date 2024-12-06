@@ -1,104 +1,198 @@
 'use client';
 
-import { Box, IconButton, Typography } from '@mui/material';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import { useSocket } from '@/context/SocketContext';
-import ChatMessage from './ChatMessage';
-import ChatInput from './ChatInput';
-import OnlineUsers from './OnlineUsers';
+import React from 'react';
+import { useSocket } from '@/lib/socket/context';
+import { Paper, Typography, Box, Tabs, Tab, List, ListItem, ListItemText, ListItemButton, Avatar, Badge } from '@mui/material';
+import { motion, AnimatePresence } from 'framer-motion';
+import ChatInput from '@/components/chat/ChatInput';
+import ChatMessage from '@/components/chat/ChatMessage';
+import PersonIcon from '@mui/icons-material/Person';
+import PublicIcon from '@mui/icons-material/Public';
 
-export default function ChatPage() {
-  const { messages, username, selectedUser, setSelectedUser } = useSocket();
+interface TabPanelProps {
+  children?: React.ReactNode;
+  index: number;
+  value: number;
+}
 
-  const handleSelectUser = (username: string) => {
-    setSelectedUser(username);
-  };
+function TabPanel(props: TabPanelProps) {
+  const { children, value, index, ...other } = props;
 
   return (
-    <Box
+    <div
+      role="tabpanel"
+      hidden={value !== index}
+      {...other}
+      style={{ height: '100%', display: value === index ? 'flex' : 'none', flexDirection: 'column' }}
+    >
+      {value === index && children}
+    </div>
+  );
+}
+
+const ChatPage = () => {
+  const { socket, messages, onlineUsers, username, selectedUser, selectUser } = useSocket();
+  const [tabValue, setTabValue] = React.useState(0);
+  const messagesEndRef = React.useRef<HTMLDivElement>(null);
+
+  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
+    setTabValue(newValue);
+    if (newValue === 0) {
+      selectUser(null); // Reset selected user when switching to public chat
+    }
+  };
+
+  React.useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages]);
+
+  if (!socket) {
+    return (
+      <Box
+        component={motion.div}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          height: '100vh',
+          p: 3,
+        }}
+      >
+        <Typography variant="h6" color="text.secondary">
+          Connecting to chat...
+        </Typography>
+      </Box>
+    );
+  }
+
+  const publicMessages = messages.filter(m => !m.private);
+  const privateMessages = messages.filter(m => 
+    m.private && ((m.username === username && m.to === selectedUser) || 
+    (m.username === selectedUser && m.to === username))
+  );
+
+  const currentMessages = tabValue === 0 ? publicMessages : privateMessages;
+
+  return (
+    <Paper
+      elevation={0}
       sx={{
-        display: 'flex',
         height: '100vh',
+        display: 'flex',
         bgcolor: 'background.default',
+        borderRadius: 0,
       }}
     >
-      {/* Online Users List - Always visible on desktop, toggles on mobile */}
+      {/* Left sidebar with tabs and user list */}
       <Box
         sx={{
-          width: { xs: selectedUser ? '0' : '100%', md: '300px' },
+          width: 280,
           borderRight: 1,
           borderColor: 'divider',
-          display: { xs: selectedUser ? 'none' : 'block', md: 'block' },
-          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
         }}
       >
-        <OnlineUsers
-          selectedUser={selectedUser}
-          onSelectUser={handleSelectUser}
-        />
+        <Tabs
+          value={tabValue}
+          onChange={handleTabChange}
+          aria-label="chat tabs"
+          sx={{ borderBottom: 1, borderColor: 'divider' }}
+        >
+          <Tab 
+            icon={<PublicIcon />} 
+            label="Public" 
+            sx={{ flexGrow: 1 }}
+          />
+          <Tab 
+            icon={<PersonIcon />} 
+            label="Private" 
+            sx={{ flexGrow: 1 }}
+          />
+        </Tabs>
+
+        <Box sx={{ flexGrow: 1, overflow: 'auto' }}>
+          <TabPanel value={tabValue} index={0}>
+            <Typography variant="subtitle2" sx={{ p: 2, color: 'text.secondary' }}>
+              Public Chat Room
+            </Typography>
+          </TabPanel>
+          <TabPanel value={tabValue} index={1}>
+            <List>
+              {onlineUsers
+                .filter(user => user.username !== username)
+                .map((user) => (
+                  <ListItem key={user.username} disablePadding>
+                    <ListItemButton
+                      selected={selectedUser === user.username}
+                      onClick={() => selectUser(user.username)}
+                      sx={{
+                        borderRadius: 1,
+                        m: 0.5,
+                      }}
+                    >
+                      <Badge
+                        overlap="circular"
+                        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                        variant="dot"
+                        color="success"
+                      >
+                        <Avatar sx={{ width: 32, height: 32, mr: 1 }}>
+                          {user.username[0].toUpperCase()}
+                        </Avatar>
+                      </Badge>
+                      <ListItemText 
+                        primary={user.username}
+                        secondary={`Last seen ${new Date(user.lastSeen).toLocaleTimeString()}`}
+                      />
+                    </ListItemButton>
+                  </ListItem>
+                ))}
+            </List>
+          </TabPanel>
+        </Box>
       </Box>
 
-      {/* Chat Area - Shows when user is selected */}
+      {/* Main chat area */}
       <Box
         sx={{
-          flex: 1,
-          display: { xs: selectedUser ? 'flex' : 'none', md: 'flex' },
+          flexGrow: 1,
+          display: 'flex',
           flexDirection: 'column',
           height: '100%',
-          position: 'relative',
         }}
       >
-        {/* Chat Header */}
         <Box
           sx={{
-            p: 2,
-            borderBottom: 1,
-            borderColor: 'divider',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 2,
-            bgcolor: 'background.paper',
-          }}
-        >
-          <IconButton 
-            sx={{ display: { xs: 'block', md: 'none' } }}
-            onClick={() => setSelectedUser(null)}
-          >
-            <ArrowBackIcon />
-          </IconButton>
-          {selectedUser && (
-            <Typography variant="h6">
-              {selectedUser}
-            </Typography>
-          )}
-        </Box>
-
-        {/* Messages Area */}
-        <Box
-          sx={{
-            flex: 1,
-            p: 2,
+            flexGrow: 1,
             overflowY: 'auto',
+            p: 2,
             display: 'flex',
             flexDirection: 'column',
           }}
         >
-          {messages.map((message, index) => (
-            <ChatMessage
-              key={index}
-              message={message}
-              isOwnMessage={message.from === username}
-            />
-          ))}
+          <AnimatePresence>
+            {currentMessages.map((message) => (
+              <ChatMessage
+                key={message.id}
+                message={message}
+                isOwnMessage={message.username === username}
+              />
+            ))}
+          </AnimatePresence>
+          <div ref={messagesEndRef} />
         </Box>
 
-        {/* Chat Input */}
-        {selectedUser && (
-          <Box sx={{ p: 2, borderTop: 1, borderColor: 'divider' }}>
-            <ChatInput />
-          </Box>
-        )}
+        <Box sx={{ p: 2, borderTop: 1, borderColor: 'divider' }}>
+          <ChatInput privateChat={tabValue === 1} recipient={selectedUser} />
+        </Box>
       </Box>
-    </Box>
+    </Paper>
   );
-}
+};
+
+export default ChatPage;

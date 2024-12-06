@@ -1,0 +1,65 @@
+import { getAllPosts, getPostBySlug } from '@/lib/blog';
+import { notFound } from 'next/navigation';
+import { Metadata, ResolvingMetadata } from 'next';
+import BlogPostContent from '@/components/blog/BlogPostContent';
+
+interface Props {
+  params: { slug: string };
+}
+
+export async function generateMetadata(
+  { params }: Props,
+  parent: ResolvingMetadata
+): Promise<Metadata> {
+  try {
+    const post = getPostBySlug(params.slug);
+    
+    if (!post) {
+      return {
+        title: 'Post Not Found',
+        description: 'The requested blog post could not be found.'
+      };
+    }
+
+    return {
+      title: post.seoTitle || post.title,
+      description: post.seoDescription || post.description,
+      keywords: post.seoKeywords,
+      openGraph: {
+        title: post.seoTitle || post.title,
+        description: post.seoDescription || post.description,
+        images: [post.imgSrc],
+      },
+    };
+  } catch (error) {
+    console.error('Error generating metadata:', error);
+    return {
+      title: 'Error',
+      description: 'An error occurred while loading the blog post.'
+    };
+  }
+}
+
+export function generateStaticParams() {
+  try {
+    const posts = getAllPosts();
+    return posts.map((post) => ({
+      slug: post.slug,
+    }));
+  } catch (error) {
+    console.error('Error generating static params:', error);
+    return [];
+  }
+}
+
+export default function BlogPost({ params }: Props) {
+  const post = getPostBySlug(params.slug);
+  const allPosts = getAllPosts();
+  const relatedPosts = allPosts.filter(p => p.slug !== params.slug).slice(0, 3);
+  
+  if (!post) {
+    notFound();
+  }
+
+  return <BlogPostContent post={post} relatedPosts={relatedPosts} />;
+}
