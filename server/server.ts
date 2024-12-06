@@ -120,6 +120,11 @@ io.on('connection', (socket) => {
   });
 });
 
+// Add health check endpoint
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'healthy' });
+});
+
 const PORT = process.env.PORT || 3001;
 httpServer.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
