@@ -1,31 +1,21 @@
-import { Poppins } from 'next/font/google'
-import './globals.css'
-import { Providers } from '@/components/Providers'
-import RootLayoutClient from '@/components/RootLayoutClient'
-import { metadata } from './layout-metadata'
+import { Providers } from '@/components/Providers';
+import { Inter } from 'next/font/google';
+import './globals.css';
+import { Suspense } from 'react';
+import Loading from './loading';
 
-const poppins = Poppins({ 
-  weight: ['300', '400', '500', '600', '700'],
-  subsets: ['latin'],
-  display: 'swap',
-})
+const inter = Inter({ subsets: ['latin'] });
 
-export { metadata }
-
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={poppins.className}>
-      <body>
+    <html lang="en">
+      <body className={inter.className}>
         <Providers>
-          <RootLayoutClient>
+          <Suspense fallback={<Loading />}>
             {children}
-          </RootLayoutClient>
+          </Suspense>
         </Providers>
       </body>
     </html>
-  )
+  );
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { Box, Typography, Paper, IconButton, Tooltip, Menu, MenuItem, Avatar } from '@mui/material';
+import { Box, Typography, Paper, IconButton, Tooltip, Menu, MenuItem, Avatar, Link } from '@mui/material';
 import Image from 'next/image';
 import FileIcon from '@mui/icons-material/InsertDriveFile';
 import VideoFileIcon from '@mui/icons-material/VideoFile';
@@ -27,22 +27,22 @@ export default function ChatMessage({ message, isOwnMessage }: ChatMessageProps)
   const [imageError, setImageError] = useState(false);
 
   const getFileIcon = () => {
-    if (!message.fileType) return null;
-    if (message.fileType.startsWith('image/')) return <ImageIcon />;
-    if (message.fileType.startsWith('video/')) return <VideoFileIcon />;
+    if (!message.attachment?.type) return null;
+    if (message.attachment.type.startsWith('image/')) return <ImageIcon />;
+    if (message.attachment.type.startsWith('video/')) return <VideoFileIcon />;
     return <FileIcon />;
   };
 
   const handleFileDownload = () => {
-    if (!message.fileData || !message.fileName) {
+    if (!message.attachment || !message.attachment.data || !message.attachment.name) {
       toast.error('File data or name is missing');
       return;
     }
     
     try {
       const link = document.createElement('a');
-      link.href = message.fileData;
-      link.download = message.fileName;
+      link.href = message.attachment.data;
+      link.download = message.attachment.name;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -139,6 +139,60 @@ export default function ChatMessage({ message, isOwnMessage }: ChatMessageProps)
     ));
   };
 
+  const renderAttachment = () => {
+    if (!message.attachment) return null;
+    
+    if (message.attachment.type.startsWith('image/')) {
+      return (
+        <Box
+          component="img"
+          src={message.attachment.data}
+          alt={message.attachment.name}
+          sx={{
+            maxWidth: '200px',
+            maxHeight: '200px',
+            borderRadius: 1,
+            mt: 1
+          }}
+        />
+      );
+    }
+
+    if (message.attachment.type.startsWith('video/')) {
+      return (
+        <Box
+          component="video"
+          controls
+          src={message.attachment.data}
+          sx={{
+            maxWidth: '200px',
+            maxHeight: '200px',
+            borderRadius: 1,
+            mt: 1
+          }}
+        />
+      );
+    }
+
+    return (
+      <Link
+        href={message.attachment.data}
+        download={message.attachment.name}
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 1,
+          mt: 1,
+          textDecoration: 'none',
+          color: 'inherit'
+        }}
+      >
+        {getFileIcon()}
+        <Typography variant="body2">{message.attachment.name}</Typography>
+      </Link>
+    );
+  };
+
   return (
     <Box
       sx={{
@@ -183,38 +237,7 @@ export default function ChatMessage({ message, isOwnMessage }: ChatMessageProps)
           <Typography variant="body1" sx={{ wordBreak: 'break-word' }}>
             {message.text}
           </Typography>
-          {message.fileType?.startsWith('image/') && !imageError && message.fileData && (
-            <Box
-              sx={{
-                mt: 1,
-                position: 'relative',
-                width: '100%',
-                maxWidth: 300,
-                height: 200,
-                borderRadius: 1,
-                overflow: 'hidden',
-              }}
-            >
-              <Image
-                src={message.fileData}
-                alt="Shared image"
-                fill
-                style={{ objectFit: 'cover' }}
-                onError={handleImageError}
-              />
-            </Box>
-          )}
-          {message.fileType && (
-            <Box sx={{ mt: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
-              {getFileIcon()}
-              <Typography variant="body2" sx={{ flex: 1 }}>
-                {message.fileName}
-              </Typography>
-              <IconButton size="small" onClick={handleFileDownload}>
-                <DownloadIcon />
-              </IconButton>
-            </Box>
-          )}
+          {renderAttachment()}
           <Typography
             variant="caption"
             sx={{

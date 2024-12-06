@@ -14,27 +14,24 @@ export default function UserLogin() {
   const router = useRouter();
   const { socket, connect } = useSocket();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!username.trim()) {
       setError('Username is required');
       return;
     }
-
+    
     try {
-      setIsLoading(true);
       setError('');
-
-      connect(username.trim());
-      Cookies.set('username', username.trim());
+      setUsername(username.trim());
+      connect();
       router.push('/chat/room');
       toast.success('Connected successfully!');
-    } catch (err) {
-      setError('An error occurred while connecting');
-      console.error('Connection error:', err);
-    } finally {
-      setIsLoading(false);
+    } catch (error) {
+      console.error('Login error:', error);
+      setError('Failed to connect. Please try again.');
+      toast.error('Connection failed!');
     }
   };
 

@@ -4,7 +4,18 @@ const nextConfig = {
   images: {
     domains: ['images.unsplash.com', 'unsplash.com']
   },
-  pageExtensions: ['js', 'jsx', 'ts', 'tsx']
+  pageExtensions: ['js', 'jsx', 'ts', 'tsx'],
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        net: false,
+        tls: false
+      };
+    }
+    return config;
+  }
 };
 
 module.exports = nextConfig;

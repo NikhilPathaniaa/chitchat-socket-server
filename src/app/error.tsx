@@ -1,55 +1,85 @@
 'use client';
 
-import { useEffect } from 'react'
-import { Button, Container, Typography, Box } from '@mui/material'
-import { motion } from 'framer-motion'
+import { Box, Button, Typography } from '@mui/material';
+import { motion } from 'framer-motion';
+import { useEffect } from 'react';
 
 export default function Error({
   error,
   reset,
 }: {
-  error: Error & { digest?: string }
-  reset: () => void
+  error: Error & { digest?: string };
+  reset: () => void;
 }) {
   useEffect(() => {
-    console.error(error)
-  }, [error])
+    console.error(error);
+  }, [error]);
 
   return (
-    <Container maxWidth="sm">
-      <Box
-        component={motion.div}
-        initial={{ opacity: 0, y: 20 }}
+    <Box
+      sx={{
+        height: '100vh',
+        width: '100vw',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 3,
+        p: 2,
+      }}
+    >
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        sx={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          minHeight: '80vh',
-          textAlign: 'center',
-          gap: 3,
-        }}
+        transition={{ duration: 0.5 }}
       >
-        <Typography variant="h4" component="h1" gutterBottom>
+        <Typography
+          variant="h4"
+          sx={{
+            color: '#ef4444',
+            fontWeight: 600,
+            textAlign: 'center',
+          }}
+        >
           Something went wrong!
         </Typography>
-        <Typography variant="body1" color="text.secondary" paragraph>
-          {error.message || 'An unexpected error occurred'}
+      </motion.div>
+
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.5, delay: 0.2 }}
+      >
+        <Typography
+          variant="body1"
+          sx={{
+            color: 'text.secondary',
+            textAlign: 'center',
+            maxWidth: '600px',
+          }}
+        >
+          {error.message || 'An unexpected error occurred. Please try again.'}
         </Typography>
+      </motion.div>
+
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.4 }}
+      >
         <Button
           variant="contained"
           onClick={reset}
           sx={{
-            background: 'linear-gradient(45deg, #FF6B6B, #4ECDC4)',
+            bgcolor: '#8b5cf6',
             '&:hover': {
-              background: 'linear-gradient(45deg, #FF5555, #3DBDB4)',
+              bgcolor: '#7c3aed',
             },
           }}
         >
           Try again
         </Button>
-      </Box>
-    </Container>
-  )
+      </motion.div>
+    </Box>
+  );
 }
