@@ -1,143 +1,101 @@
 'use client';
 
-import { useState } from 'react';
-import { Box, Container, Paper, TextField, Button, Typography } from '@mui/material';
-import { motion } from 'framer-motion';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import {
+  Box,
+  Container,
+  Paper,
+  Typography,
+  TextField,
+  Button,
+  CircularProgress,
+} from '@mui/material';
+import { motion } from 'framer-motion';
 import { useSocket } from '@/lib/socket/context';
-import Image from 'next/image';
-import { toast } from 'react-hot-toast';
 
 export default function ChatPage() {
   const [username, setUsername] = useState('');
-  const { setUsername: setContextUsername, connect } = useSocket();
+  const [error, setError] = useState('');
   const router = useRouter();
+  const { connect, isConnected, isLoading, error: socketError } = useSocket();
+
+  useEffect(() => {
+    if (isConnected) {
+      router.push('/chat/room');
+    }
+  }, [isConnected, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!username.trim()) {
-      toast.error('Please enter a username');
+      setError('Please enter a username');
+      return;
+    }
+
+    if (username.length < 3) {
+      setError('Username must be at least 3 characters long');
       return;
     }
 
     try {
-      setContextUsername(username.trim());
-      connect();
-      router.push('/chat/room');
-      toast.success('Connected successfully!');
-    } catch (error) {
-      console.error('Login error:', error);
-      toast.error('Failed to connect. Please try again.');
+      await connect(username);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to connect');
     }
   };
 
   return (
-    <Container maxWidth="sm" sx={{ height: '100vh', display: 'flex', alignItems: 'center' }}>
-      <Paper
-        component={motion.div}
+    <Container maxWidth="sm" sx={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{
-          type: "spring",
-          stiffness: 300,
-          damping: 25
-        }}
-        elevation={4}
-        sx={{
-          width: '100%',
-          p: 4,
-          borderRadius: 4,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: 3,
-          bgcolor: 'background.paper',
-        }}
+        transition={{ duration: 0.5 }}
+        style={{ width: '100%' }}
       >
-        <motion.div
-          initial={{ scale: 0.8, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{
-            type: "spring",
-            stiffness: 300,
-            damping: 25,
-            delay: 0.1
-          }}
-        >
-          <Image
-            src="/logo.svg"
-            alt="ChitChat Logo"
-            width={80}
-            height={80}
-            priority
-          />
-        </motion.div>
-
-        <Typography
-          variant="h4"
-          component={motion.h4}
-          initial={{ y: -20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{
-            type: "spring",
-            stiffness: 300,
-            damping: 25,
-            delay: 0.2
-          }}
+        <Paper
+          elevation={3}
           sx={{
-            fontWeight: 600,
-            background: 'linear-gradient(45deg, #6366f1, #8b5cf6)',
-            backgroundClip: 'text',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            mb: 2,
-          }}
-        >
-          Welcome to ChitChat
-        </Typography>
-
-        <Box
-          component="form"
-          onSubmit={handleSubmit}
-          sx={{
-            width: '100%',
+            p: 4,
             display: 'flex',
             flexDirection: 'column',
             gap: 2,
+            background: 'rgba(255, 255, 255, 0.05)',
+            backdropFilter: 'blur(10px)',
           }}
         >
-          <TextField
-            fullWidth
-            label="Enter your username"
-            variant="outlined"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            sx={{
-              '& .MuiOutlinedInput-root': {
-                '&:hover fieldset': {
-                  borderColor: 'primary.main',
-                },
-              },
-            }}
-          />
-          <Button
-            type="submit"
-            variant="contained"
-            size="large"
-            sx={{
-              background: 'linear-gradient(45deg, #6366f1, #8b5cf6)',
-              textTransform: 'none',
-              py: 1.5,
-              '&:hover': {
-                background: 'linear-gradient(45deg, #4f46e5, #7c3aed)',
-              },
-            }}
-          >
-            Join Chat
-          </Button>
-        </Box>
-      </Paper>
+          <Typography variant="h4" component="h1" gutterBottom align="center">
+            Welcome to ChitChat
+          </Typography>
+          
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <TextField
+              fullWidth
+              label="Enter your username"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              error={!!error}
+              helperText={error || socketError}
+              disabled={isLoading}
+            />
+            
+            <Button
+              type="submit"
+              variant="contained"
+              size="large"
+              disabled={isLoading}
+              sx={{ mt: 2 }}
+            >
+              {isLoading ? (
+                <CircularProgress size={24} color="inherit" />
+              ) : (
+                'Join Chat'
+              )}
+            </Button>
+          </form>
+        </Paper>
+      </motion.div>
     </Container>
   );
 }

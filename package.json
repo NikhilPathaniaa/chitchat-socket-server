@@ -6,9 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "lint": "next lint",
     "build:server": "tsc --project tsconfig.server.json",
-    "server": "npm run build:server && nodemon dist/server/index.js",
-    "server:prod": "npm run build:server && node dist/server/index.js"
+    "server": "npm run build:server && nodemon --config nodemon.json",
+    "server:prod": "npm run build:server && node dist/server/server.js"
   },
   "dependencies": {
     "@emoji-mart/data": "^1.2.1",
@@ -27,17 +28,21 @@
     "@types/cors": "^2.8.17",
     "@types/express": "^4.17.21",
     "@types/js-cookie": "^3.0.6",
+    "@types/lodash": "^4.17.13",
     "@types/node": "20.5.0",
     "@types/react": "18.2.20",
     "@types/react-dom": "18.2.7",
     "@types/styled-components": "^5.1.34",
+    "@types/uuid": "^10.0.0",
     "autoprefixer": "10.4.15",
     "clsx": "^2.1.1",
     "cors": "^2.8.5",
     "date-fns": "^4.1.0",
+    "emoji-picker-react": "^4.12.0",
     "express": "^4.18.2",
     "framer-motion": "^10.18.0",
     "js-cookie": "^3.0.5",
+    "lodash": "^4.17.21",
     "lucide-react": "^0.462.0",
     "next": "14.1.0",
     "nodemon": "^3.0.3",
@@ -54,6 +59,7 @@
     "tailwind-merge": "^2.5.5",
     "tailwindcss": "^3.4.1",
     "ts-node": "^10.9.2",
-    "typescript": "^5.3.3"
+    "typescript": "^5.3.3",
+    "uuid": "^11.0.3"
   }
 }

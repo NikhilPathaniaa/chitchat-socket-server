@@ -1,12 +1,11 @@
 'use client';
 
-import { AppBar, Toolbar, Typography, IconButton, Box, Badge } from '@mui/material';
-import LogoutIcon from '@mui/icons-material/Logout';
-import { useSocket } from '@/lib/socket/context';
+import { AppBar, Toolbar, Typography, Button } from '@mui/material';
 import { useRouter } from 'next/navigation';
+import { useSocket } from '@/lib/socket/context';
 
 export default function ChatNavbar() {
-  const { username, disconnect, onlineUsers } = useSocket();
+  const { username, disconnect } = useSocket();
   const router = useRouter();
 
   const handleLogout = () => {
@@ -15,41 +14,14 @@ export default function ChatNavbar() {
   };
 
   return (
-    <AppBar position="fixed" elevation={1} sx={{ bgcolor: 'background.paper' }}>
+    <AppBar position="fixed">
       <Toolbar>
-        <Typography variant="h6" sx={{ flexGrow: 1, color: 'text.primary' }}>
-          ChitChat
+        <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+          ChitChat - {username}
         </Typography>
-        
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <Badge 
-            badgeContent={onlineUsers.length} 
-            color="success"
-            sx={{ mr: 2 }}
-          >
-            <Typography variant="body2" color="text.secondary">
-              Online Users
-            </Typography>
-          </Badge>
-          
-          <Typography variant="body2" color="text.secondary">
-            {username}
-          </Typography>
-
-          <IconButton 
-            color="primary" 
-            onClick={handleLogout}
-            sx={{ 
-              ml: 1,
-              '&:hover': {
-                color: 'error.main',
-                bgcolor: 'error.light',
-              }
-            }}
-          >
-            <LogoutIcon />
-          </IconButton>
-        </Box>
+        <Button color="inherit" onClick={handleLogout}>
+          Logout
+        </Button>
       </Toolbar>
     </AppBar>
   );

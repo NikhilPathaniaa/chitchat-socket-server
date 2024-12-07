@@ -1,0 +1,77 @@
+'use client';
+
+import React from 'react';
+import { Box, Typography, Avatar } from '@mui/material';
+import { motion } from 'framer-motion';
+import { useSocket } from '@/lib/socket/context';
+
+interface ChatMessageProps {
+  message: {
+    id: string;
+    text: string;
+    username: string;
+    timestamp: number;
+  };
+  isOwnMessage: boolean;
+}
+
+const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
+  const { username } = useSocket();
+  const isOwnMsg = message.username === username;
+
+  return (
+    <Box
+      component={motion.div}
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      sx={{
+        display: 'flex',
+        flexDirection: isOwnMsg ? 'row-reverse' : 'row',
+        gap: 1,
+        mb: 2,
+      }}
+    >
+      <Avatar
+        sx={{
+          bgcolor: isOwnMsg ? 'primary.main' : 'secondary.main',
+          width: 32,
+          height: 32,
+        }}
+      >
+        {message.username[0].toUpperCase()}
+      </Avatar>
+
+      <Box
+        sx={{
+          maxWidth: '70%',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: isOwnMsg ? 'flex-end' : 'flex-start',
+        }}
+      >
+        <Typography variant="caption" sx={{ mb: 0.5, color: 'text.secondary' }}>
+          {message.username}
+        </Typography>
+
+        <Box
+          sx={{
+            bgcolor: isOwnMsg ? 'primary.main' : 'grey.100',
+            color: isOwnMsg ? 'white' : 'text.primary',
+            p: 1.5,
+            borderRadius: 2,
+            borderTopRightRadius: isOwnMsg ? 0 : 2,
+            borderTopLeftRadius: isOwnMsg ? 2 : 0,
+          }}
+        >
+          <Typography variant="body1">{message.text}</Typography>
+        </Box>
+
+        <Typography variant="caption" sx={{ mt: 0.5, color: 'text.secondary' }}>
+          {new Date(message.timestamp).toLocaleTimeString()}
+        </Typography>
+      </Box>
+    </Box>
+  );
+};
+
+export default ChatMessage;

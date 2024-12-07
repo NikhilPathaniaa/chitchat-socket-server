@@ -5,13 +5,27 @@ export interface Reaction {
 
 export interface Message {
   id: string;
-  content: string;
-  message?: string;
-  from: string;
-  to?: string | null;  // Make it optional and nullable
+  text: string;
+  username: string;  // For backward compatibility
+  from?: string;     // New field for sender
   timestamp: number;
-  reactions?: Reaction[];  // Make reactions optional
-  fileData?: string;
+  to?: string | null; // null for group chat, string for private chat
   fileType?: string;
-  fileName?: string;
+  fileUrl?: string;
+  reactions?: {
+    [emoji: string]: string[]; // Array of usernames who reacted with this emoji
+  };
+}
+
+export interface ReactionEvent {
+  messageId: string;
+  emoji: string;
+  username: string;
+  remove?: boolean;
+}
+
+export interface TypingEvent {
+  username: string;
+  isTyping: boolean;
+  to?: string | null; // null for group chat, string for private chat
 }

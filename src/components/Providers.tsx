@@ -87,16 +87,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         <CssBaseline />
         <SocketProvider>
           {children}
-          <Toaster 
-            position="top-right"
-            toastOptions={{
-              duration: 3000,
-              style: {
-                background: '#333',
-                color: '#fff',
-              },
-            }}
-          />
+          <Toaster position="top-right" />
         </SocketProvider>
       </ThemeProvider>
     </ErrorBoundary>

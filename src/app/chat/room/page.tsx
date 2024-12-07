@@ -4,18 +4,37 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSocket } from '@/lib/socket/context';
 import ChatRoom from '@/components/chat/ChatRoom';
+import { Box, CircularProgress, Typography } from '@mui/material';
 
 export default function ChatRoomPage() {
-  const { username } = useSocket();
   const router = useRouter();
+  const { isConnected, username } = useSocket();
 
   useEffect(() => {
-    if (!username) {
-      router.push('/chat');
+    if (!isConnected || !username) {
+      router.replace('/chat');
     }
-  }, [username, router]);
+  }, [isConnected, username, router]);
 
-  if (!username) return null;
+  if (!isConnected || !username) {
+    return (
+      <Box
+        sx={{
+          height: '100vh',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 2,
+        }}
+      >
+        <CircularProgress />
+        <Typography variant="body1" color="text.secondary">
+          Redirecting to login...
+        </Typography>
+      </Box>
+    );
+  }
 
   return <ChatRoom />;
 }
