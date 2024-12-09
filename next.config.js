@@ -15,23 +15,29 @@ const nextConfig = {
     outputFileTracingRoot: path.join(__dirname, '.'),
     serverComponentsExternalPackages: ['mongoose'],
     appDir: true,
+    clientReferenceManifest: {
+      resolveClientReferencePaths: (filePath) => {
+        if (filePath.includes('(with-navbar)')) {
+          return true;
+        }
+        return false;
+      }
+    }
   },
   webpack: (config, { isServer, nextRuntime }) => {
-    // Explicitly include all necessary paths
     config.resolve.modules = [
       path.resolve(__dirname, 'src'),
       'node_modules'
     ];
 
-    // Ensure all necessary files are traced
     config.snapshot = {
       ...config.snapshot,
       managedPaths: [
-        path.resolve(__dirname, 'node_modules')
+        path.resolve(__dirname, 'node_modules'),
+        path.resolve(__dirname, 'src/app/(with-navbar)')
       ]
     };
 
-    // Handle fallback for non-server environments
     if (!isServer) {
       config.resolve.fallback = {
         ...config.resolve.fallback,
@@ -41,12 +47,10 @@ const nextConfig = {
       };
     }
 
-    // Ensure client reference manifests are handled
     config.optimization.moduleIds = 'named';
 
     return config;
   },
-  // Ensure all routes are handled
   async rewrites() {
     return [
       {
@@ -55,7 +59,6 @@ const nextConfig = {
       },
     ];
   },
-  // Explicitly define route groups
   async redirects() {
     return [
       {
