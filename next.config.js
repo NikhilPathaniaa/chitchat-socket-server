@@ -8,7 +8,8 @@ const nextConfig = {
   output: 'standalone', 
   experimental: {
     outputFileTracingRoot: '.',
-    serverComponentsExternalPackages: ['mongoose']
+    serverComponentsExternalPackages: ['mongoose'],
+    appDir: true
   },
   webpack: (config, { isServer }) => {
     if (!isServer) {
