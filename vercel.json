@@ -8,10 +8,6 @@
   ],
   "routes": [
     {
-      "src": "/(.*)/(with-navbar)/(.*)",
-      "dest": "/"
-    },
-    {
       "src": "/(.*)",
       "dest": "/"
     }
@@ -20,6 +16,6 @@
     "NEXT_PUBLIC_SOCKET_URL": "https://chitchat-socket-server.onrender.com",
     "NEXT_PUBLIC_APP_URL": "https://chitchat.vercel.app"
   },
-  "buildCommand": "npm run build",
+  "buildCommand": "npm run vercel-build",
   "outputDirectory": ".next"
 }

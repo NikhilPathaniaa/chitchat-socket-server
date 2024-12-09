@@ -6,9 +6,11 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "build:clean": "rm -rf .next && next build",
     "build:server": "tsc --project tsconfig.server.json",
     "server": "npm run build:server && nodemon dist/server/index.js",
-    "server:prod": "npm run build:server && node dist/server/index.js"
+    "server:prod": "npm run build:server && node dist/server/index.js",
+    "vercel-build": "npm run build:clean"
   },
   "dependencies": {
     "@emoji-mart/data": "^1.2.1",
