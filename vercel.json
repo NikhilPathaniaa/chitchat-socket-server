@@ -15,5 +15,8 @@
   "env": {
     "NEXT_PUBLIC_SOCKET_URL": "https://chitchat-socket-server.onrender.com",
     "NEXT_PUBLIC_APP_URL": "https://chitchat-le5v.vercel.app"
-  }
+  },
+  "buildCommand": "npm run build",
+  "outputDirectory": ".next",
+  "framework": "nextjs"
 }
