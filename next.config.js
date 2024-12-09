@@ -15,10 +15,14 @@ const nextConfig = {
     outputFileTracingRoot: path.join(__dirname, '.'),
     serverComponentsExternalPackages: ['mongoose'],
     appDir: true,
-    // Force client-side tracing
-    clientTraceRoot: path.join(__dirname, '.'),
   },
   webpack: (config, { isServer, nextRuntime }) => {
+    // Explicitly include all necessary paths
+    config.resolve.modules = [
+      path.resolve(__dirname, 'src'),
+      'node_modules'
+    ];
+
     // Ensure all necessary files are traced
     config.snapshot = {
       ...config.snapshot,
@@ -26,12 +30,6 @@ const nextConfig = {
         path.resolve(__dirname, 'node_modules')
       ]
     };
-
-    // Explicit module resolution
-    config.resolve.extensions = [
-      ...config.resolve.extensions,
-      '.js', '.jsx', '.ts', '.tsx'
-    ];
 
     // Handle fallback for non-server environments
     if (!isServer) {
@@ -55,6 +53,31 @@ const nextConfig = {
         source: '/(.*)',
         destination: '/',
       },
+    ];
+  },
+  // Explicitly define route groups
+  async redirects() {
+    return [
+      {
+        source: '/about',
+        destination: '/',
+        permanent: true
+      },
+      {
+        source: '/blogs',
+        destination: '/',
+        permanent: true
+      },
+      {
+        source: '/chat',
+        destination: '/',
+        permanent: true
+      },
+      {
+        source: '/docs',
+        destination: '/',
+        permanent: true
+      }
     ];
   }
 };

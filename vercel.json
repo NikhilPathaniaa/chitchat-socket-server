@@ -17,6 +17,5 @@
     "NEXT_PUBLIC_APP_URL": "https://chitchat.vercel.app"
   },
   "buildCommand": "npm run build",
-  "outputDirectory": ".next",
-  "framework": "nextjs"
+  "outputDirectory": ".next"
 }
