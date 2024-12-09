@@ -295,304 +295,162 @@ export default function BlogPostContent({ post, relatedPosts }: BlogPostContentP
       <Container 
         maxWidth="lg" 
         sx={{ 
-          py: { xs: 6, md: 12 },
-          px: { xs: 3, sm: 6, md: 8 }
+          py: 8
         }}
       >
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, ease: "easeOut" }}
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
         >
-          <Typography
-            variant="body1"
-            component="div"
-            sx={{
-              fontSize: { xs: '1.25rem', sm: '1.35rem' },
-              color: 'text.secondary',
-              mb: 8,
-              fontFamily: "'Inter', sans-serif",
-              lineHeight: 1.8,
-              fontWeight: 400,
-              maxWidth: '800px',
-              mx: 'auto',
-              '& strong': {
-                color: 'text.primary',
-                fontWeight: 600
-              }
-            }}
-          >
-            {post.description}
-          </Typography>
-
-          <Box
-            sx={{
-              maxWidth: '800px',
-              mx: 'auto',
-              '& .markdown-content': {
-                '& p': {
-                  fontSize: { xs: '1.125rem', sm: '1.25rem' },
-                  lineHeight: 1.9,
-                  color: 'text.primary',
-                  mb: 4,
-                  fontFamily: "'Inter', sans-serif",
-                  '& strong': {
-                    color: alpha(theme.palette.primary.main, 0.9),
-                    fontWeight: 600
-                  }
-                },
-                '& h2': {
-                  ...gradientTextStyle,
-                  fontSize: { xs: '1.75rem', sm: '2.25rem' },
-                  fontWeight: 700,
-                  color: 'text.primary',
-                  mt: 10,
-                  mb: 4,
-                  fontFamily: "'Poppins', sans-serif",
-                  letterSpacing: '-0.02em'
-                },
-                '& h3': {
-                  fontSize: { xs: '1.5rem', sm: '1.75rem' },
-                  fontWeight: 600,
-                  fontFamily: "'Poppins', sans-serif",
-                  color: 'text.primary',
-                  mt: 8,
-                  mb: 3,
-                  letterSpacing: '-0.01em'
-                },
-                '& ul': {
-                  pl: 4,
-                  mb: 6,
-                  '& li': {
-                    fontSize: { xs: '1.125rem', sm: '1.25rem' },
-                    lineHeight: 1.8,
-                    color: 'text.primary',
-                    mb: 2,
-                    fontFamily: "'Inter', sans-serif",
-                    position: 'relative',
-                    '&::before': {
-                      content: '""',
-                      position: 'absolute',
-                      left: -24,
-                      top: '0.75em',
-                      width: 6,
-                      height: 6,
-                      borderRadius: '50%',
-                      background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)'
-                    }
-                  }
-                },
-                '& code': {
-                  backgroundColor: alpha(theme.palette.primary.main, 0.08),
-                  padding: '3px 8px',
-                  borderRadius: 1,
-                  fontSize: '0.9em',
-                  fontFamily: "'Fira Code', monospace",
-                  color: theme.palette.primary.main
-                },
-                '& pre': {
-                  backgroundColor: '#1a1a1a',
-                  padding: 4,
-                  borderRadius: 2,
-                  overflow: 'auto',
-                  mb: 6,
-                  '& code': {
-                    backgroundColor: 'transparent',
-                    color: '#fff',
-                    padding: 0,
-                    fontSize: '0.95em',
-                    fontFamily: "'Fira Code', monospace"
-                  }
-                },
-                '& blockquote': {
-                  borderLeft: '4px solid',
-                  borderColor: 'primary.main',
-                  pl: 4,
-                  py: 2,
-                  my: 6,
-                  mx: 0,
-                  fontStyle: 'italic',
-                  color: alpha(theme.palette.text.primary, 0.8),
-                  backgroundColor: alpha(theme.palette.primary.main, 0.04),
-                  borderRadius: '0 8px 8px 0',
-                  '& p': {
-                    mb: 0
-                  }
-                },
-                '& img': {
-                  maxWidth: '100%',
-                  height: 'auto',
-                  borderRadius: 2,
-                  my: 6
-                }
-              }
-            }}
-          >
-            <div className="markdown-content">
-              <ReactMarkdown>{post.content}</ReactMarkdown>
-            </div>
-          </Box>
-        </motion.div>
-
-        {/* Related Posts */}
-        {relatedPosts.length > 0 && (
-          <Box sx={{ mt: 12 }}>
-            <Typography variant="h2" sx={{
-              ...gradientTextStyle,
-              fontSize: { xs: '2rem', sm: '2.5rem' },
+          {/* Article Content */}
+          <Box sx={{ 
+            '& > *': { mb: 4 },
+            '& h1': { 
+              fontSize: '2.5rem',
               fontWeight: 700,
-              mb: 6,
-              textAlign: 'center',
-              fontFamily: "'Poppins', sans-serif",
-              letterSpacing: '-0.02em'
-            }}>
-              Related Posts
-            </Typography>
-
-            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 4 }}>
-              {relatedPosts.map((relatedPost) => (
-                <Link
-                  key={relatedPost.slug}
-                  href={`/blogs/${relatedPost.slug}`}
-                  style={{ textDecoration: 'none' }}
-                >
-                  <motion.div
-                    whileHover={{ y: -8 }}
-                    transition={{ duration: 0.3 }}
-                  >
-                    <Box sx={{
-                      p: 4,
-                      borderRadius: 3,
-                      border: '1px solid',
-                      borderColor: 'divider',
-                      boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
-                      transition: 'all 0.3s ease',
-                      '&:hover': {
-                        borderColor: 'transparent',
-                        boxShadow: '0 8px 30px rgba(0,0,0,0.1)',
-                        background: 'linear-gradient(135deg, rgba(99,102,241,0.05) 0%, rgba(139,92,246,0.05) 50%, rgba(217,70,239,0.05) 100%)'
-                      }
-                    }}>
-                      <Typography 
-                        variant="h6" 
-                        sx={{ 
-                          color: 'text.primary', 
-                          mb: 2,
-                          fontFamily: "'Poppins', sans-serif",
-                          fontWeight: 600 
-                        }}
-                      >
-                        {relatedPost.title}
-                      </Typography>
-                      <Typography 
-                        variant="body1" 
-                        sx={{ 
-                          color: 'text.secondary',
-                          fontFamily: "'Inter', sans-serif" 
-                        }}
-                      >
-                        {relatedPost.description}
-                      </Typography>
-                    </Box>
-                  </motion.div>
-                </Link>
-              ))}
-            </Box>
+              color: 'text.primary',
+              mb: 3
+            },
+            '& h2': {
+              fontSize: '2rem',
+              fontWeight: 600,
+              color: 'text.primary',
+              mb: 2
+            },
+            '& h3': {
+              fontSize: '1.75rem',
+              fontWeight: 600,
+              color: 'text.primary',
+              mb: 2
+            },
+            '& p': {
+              fontSize: '1.125rem',
+              lineHeight: 1.8,
+              color: 'text.secondary',
+              mb: 4
+            },
+            '& ul, & ol': {
+              pl: 4,
+              mb: 4,
+              '& li': {
+                mb: 1,
+                fontSize: '1.125rem',
+                color: 'text.secondary'
+              }
+            },
+            '& blockquote': {
+              borderLeft: '4px solid',
+              borderColor: 'primary.main',
+              pl: 4,
+              py: 1,
+              my: 4,
+              fontStyle: 'italic',
+              color: 'text.secondary'
+            },
+            '& code': {
+              bgcolor: 'grey.100',
+              p: 0.5,
+              borderRadius: 1,
+              fontFamily: 'monospace',
+              fontSize: '0.875em'
+            },
+            '& pre': {
+              bgcolor: 'grey.900',
+              color: 'common.white',
+              p: 2,
+              borderRadius: 2,
+              overflowX: 'auto',
+              '& code': {
+                bgcolor: 'transparent',
+                color: 'inherit'
+              }
+            },
+            '& img': {
+              maxWidth: '100%',
+              height: 'auto',
+              borderRadius: 2,
+              my: 4
+            },
+            '& a': {
+              color: 'primary.main',
+              textDecoration: 'none',
+              '&:hover': {
+                textDecoration: 'underline'
+              }
+            }
+          }}>
+            <ReactMarkdown>{post.content}</ReactMarkdown>
           </Box>
-        )}
+
+          {/* Related Posts */}
+          {relatedPosts.length > 0 && (
+            <Box sx={{ mt: 8 }}>
+              <Typography variant="h4" sx={{ mb: 4, fontWeight: 600 }}>
+                Related Posts
+              </Typography>
+              <Box sx={{ 
+                display: 'grid', 
+                gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)', lg: 'repeat(3, 1fr)' },
+                gap: 4 
+              }}>
+                {relatedPosts.map((relatedPost) => (
+                  <Paper
+                    key={relatedPost.slug}
+                    component={Link}
+                    href={`/blogs/${relatedPost.slug}`}
+                    sx={{
+                      p: 3,
+                      textDecoration: 'none',
+                      transition: 'transform 0.2s',
+                      '&:hover': {
+                        transform: 'translateY(-4px)'
+                      }
+                    }}
+                  >
+                    <Typography variant="h6" sx={{ mb: 2, color: 'text.primary' }}>
+                      {relatedPost.title}
+                    </Typography>
+                    <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                      {relatedPost.description}
+                    </Typography>
+                  </Paper>
+                ))}
+              </Box>
+            </Box>
+          )}
+        </motion.div>
       </Container>
 
-      {/* Scroll to Top Button with Progress */}
+      {/* Scroll to Top Button */}
       <motion.div
-        initial={{ opacity: 0, scale: 0 }}
-        animate={{ 
-          opacity: showScrollTop ? 1 : 0, 
-          scale: showScrollTop ? 1 : 0,
-          y: showScrollTop ? 0 : 20
-        }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: showScrollTop ? 1 : 0 }}
         transition={{ duration: 0.3 }}
         style={{
           position: 'fixed',
-          bottom: 32,
-          right: 32,
-          zIndex: 10
+          bottom: '2rem',
+          right: '2rem',
+          zIndex: 1000
         }}
       >
-        <Box
+        <IconButton
+          onClick={scrollToTop}
           sx={{
-            position: 'relative',
-            width: 56,
-            height: 56
+            bgcolor: alpha(theme.palette.primary.main, 0.1),
+            '&:hover': {
+              bgcolor: alpha(theme.palette.primary.main, 0.2),
+            },
+            width: 48,
+            height: 48,
           }}
         >
-          <svg
-            width="56"
-            height="56"
-            viewBox="0 0 56 56"
-            style={{
-              position: 'absolute',
-              transform: 'rotate(-90deg)'
-            }}
-          >
-            <circle
-              cx="28"
-              cy="28"
-              r="26"
-              fill="none"
-              stroke={alpha(theme.palette.primary.main, 0.2)}
-              strokeWidth="3"
-            />
-            <motion.circle
-              cx="28"
-              cy="28"
-              r="26"
-              fill="none"
-              stroke="url(#gradient)"
-              strokeWidth="3"
-              strokeDasharray="163.36"
-              style={{
-                strokeDashoffset: useTransform(
-                  scrollYProgress,
-                  [0, 1],
-                  [163.36, 0]
-                ),
-              }}
-            />
-          </svg>
-          <defs>
-            <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#6366f1" />
-              <stop offset="50%" stopColor="#8b5cf6" />
-              <stop offset="100%" stopColor="#d946ef" />
-            </linearGradient>
-          </defs>
-          <IconButton
-            onClick={scrollToTop}
-            sx={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              width: '100%',
-              height: '100%',
-              background: 'white',
-              boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
-              '&:hover': {
-                background: 'white'
-              }
-            }}
-          >
-            <KeyboardArrowUpIcon 
-              sx={{ 
-                color: 'primary.main',
-                fontSize: '1.8rem'
-              }} 
-            />
-          </IconButton>
-        </Box>
+          <KeyboardArrowUpIcon sx={{ color: theme.palette.primary.main }} />
+        </IconButton>
       </motion.div>
 
       {/* Feedback Button */}
-      <Box sx={{ position: 'fixed', bottom: 32, left: 32, zIndex: 10 }}>
+      <Box sx={{ position: 'fixed', bottom: 20, right: 20 }}>
         <FeedbackButton />
       </Box>
     </>

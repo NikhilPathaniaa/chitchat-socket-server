@@ -3,7 +3,6 @@
 import { Box, Typography, IconButton, Tooltip } from '@mui/material';
 import LogoutIcon from '@mui/icons-material/Logout';
 import { useSocket } from '@/lib/socket/context';
-import Cookies from 'js-cookie';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
@@ -11,11 +10,12 @@ import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
 const MotionBox = motion(Box);
 
 export default function ChatRoomNavbar() {
-  const { socket, username, disconnect } = useSocket();
+  const { socket } = useSocket();
 
   const handleLogout = () => {
-    Cookies.remove('username');
-    disconnect();
+    if (socket) {
+      socket.disconnect();
+    }
     window.location.href = '/';
   };
 
@@ -84,7 +84,7 @@ export default function ChatRoomNavbar() {
 
       {/* User Info and Actions */}
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-        {username && (
+        {socket && (
           <>
             <Typography 
               variant="body1" 
@@ -93,7 +93,7 @@ export default function ChatRoomNavbar() {
                 color: 'text.secondary'
               }}
             >
-              {username}
+              {socket?.auth?.username}
             </Typography>
             <Tooltip title="Logout">
               <IconButton onClick={handleLogout} size="small">

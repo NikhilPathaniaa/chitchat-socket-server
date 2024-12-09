@@ -14,6 +14,7 @@ export interface BlogPost {
   seoTitle?: string;
   seoDescription?: string;
   seoKeywords?: string[];
+  date: string;
 }
 
 export const blogPosts: BlogPost[] = [
@@ -91,6 +92,7 @@ Experience the future of secure communication. **No sign-ups, no storage, no wor
   seoTitle: "Introducing Our Privacy-Focused Chat App: | ChitChat Blog",
     seoDescription: "Are you tired of chat apps that store your conversations forever? Concerned about your privacy and digital footprint?",
     seoKeywords: ["real-time communication","Private chat app","Ephemeral messaging","Socket.IO chat application","No-backend chat app","Anonymous chat app", "chat applications","Secure chat app", "WebSocket", "push notifications", "data synchronization"],
+    date: '2024-01-15'
   },
   
 ];

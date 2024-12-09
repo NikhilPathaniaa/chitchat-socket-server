@@ -1,38 +1,352 @@
-'use client';
-
-import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useState, useRef, useEffect, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
-import toast from 'react-hot-toast';
+import { toast } from 'react-hot-toast';
 
-interface LocalMessage {
+// Extend Socket type to include custom properties
+interface SocketWithAuth extends Socket {
+  auth: { username?: string };
+  connected: boolean;
+}
+
+export interface Message {
   id: string;
-  text: string;
-  username: string;  // For backward compatibility
-  from?: string;     // New field
-  to?: string;       // New field
+  username: string;
+  content: string;
   timestamp: number;
-  fileUrl?: string;
-  reactions: Record<string, string[]>;
+  to?: string;
+  private?: boolean;
+  reactions?: { emoji: string; username: string }[];
+  attachment?: {
+    type: 'image' | 'file' | 'video';
+    url: string;
+    name?: string;
+    size?: number;
+  };
 }
 
 interface SocketContextType {
-  socket: Socket | null;
-  messages: LocalMessage[];
+  socket: SocketWithAuth | null;
   username: string;
+  setUsername: (username: string) => void;
+  messages: Message[];
+  setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
+  targetUsername: string | null;
+  setTargetUsername: (username: string | null) => void;
+  connect: () => boolean;
+  disconnect: () => void;
   onlineUsers: string[];
   selectedUser: string | null;
-  setSelectedUser: (username: string | null) => void;
-  sendMessage: (text: string, file?: File | null, to?: string | null) => Promise<void>;
-  addReaction: (messageId: string, emoji: string) => void;
-  removeReaction: (messageId: string, emoji: string) => void;
-  isConnected: boolean;
-  isLoading: boolean;
-  error: string | null;
-  disconnect: () => void;
-  connect: (username: string) => Promise<void>;
+  selectUser: (username: string | null) => void;
+  requestOnlineUsers: () => void;
 }
 
-const SocketContext = createContext<SocketContextType | null>(null);
+const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3001';
+
+export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [socket, setSocket] = useState<SocketWithAuth | null>(null);
+  const [username, _setUsername] = useState<string>('');
+  const usernameRef = useRef<string>('');
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [targetUsername, setTargetUsername] = useState<string | null>(null);
+  const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
+  const [selectedUser, setSelectedUser] = useState<string | null>(null);
+
+  // Synchronize username with ref
+  useEffect(() => {
+    usernameRef.current = username;
+  }, [username]);
+
+  // Setter that updates both state and ref
+  const setUsername = (newUsername: string) => {
+    console.log('Setting username in context:', newUsername);
+    _setUsername(newUsername);
+    usernameRef.current = newUsername;
+  };
+
+  const connect = useCallback(() => {
+    // Disconnect any existing socket
+    if (socket) {
+      socket.disconnect();
+    }
+
+    // Validate username before connecting
+    const currentUsername = usernameRef.current || localStorage.getItem('username');
+    
+    console.log('Connection Attempt Details:', {
+      usernameRefCurrent: usernameRef.current,
+      localStorageUsername: localStorage.getItem('username'),
+      finalUsername: currentUsername
+    });
+
+    if (!currentUsername) {
+      console.error('No username available for connection');
+      toast.error('Username is required');
+      return false;
+    }
+
+    try {
+      // Detailed logging for connection attempt
+      console.log('Attempting to connect with username:', currentUsername);
+      console.log('Socket URL:', SOCKET_URL);
+
+      // Create socket with extensive configuration
+      const newSocket = io(SOCKET_URL, {
+        auth: { 
+          username: currentUsername 
+        },
+        transports: ['websocket', 'polling'],
+        reconnection: true,
+        reconnectionAttempts: 10,
+        reconnectionDelay: 1000,
+        timeout: 15000,
+        forceNew: true,
+        withCredentials: false,
+      }) as SocketWithAuth & { auth: NonNullable<SocketWithAuth['auth']> };
+
+      // Enhanced connection event handling
+      newSocket.on('connect', () => {
+        console.log('Detailed Connection Success:', {
+          id: newSocket.id,
+          connected: newSocket.connected,
+          username: newSocket.auth.username || currentUsername,
+          transportUsed: newSocket.io.engine.transport.name
+        });
+        
+        // Ensure username is set in both state and ref
+        _setUsername(currentUsername);
+        usernameRef.current = currentUsername;
+        localStorage.setItem('username', currentUsername);
+        
+        if (!newSocket.connected) {
+          console.error('Socket reports not connected despite connect event');
+          toast.error('Connection established but not fully connected');
+        }
+        
+        setSocket(newSocket);
+        (window as any).socket = newSocket;
+        
+        return true;
+      });
+
+      // Comprehensive error handling
+      newSocket.on('connect_error', (error: Error) => {
+        console.error('Comprehensive Connection Error:', {
+          message: error.message,
+          name: error.name,
+          stack: error.stack
+        });
+        
+        toast.error(`Connection failed: ${error.message}. Check server status.`);
+        
+        setSocket(null);
+        (window as any).socket = null;
+        
+        return false;
+      });
+
+      return true;
+    } catch (error) {
+      console.error('Fatal socket connection error:', error);
+      toast.error('Failed to establish socket connection');
+      return false;
+    }
+  }, [socket]);
+
+  const disconnect = useCallback(() => {
+    if (socket) {
+      console.log('Disconnecting socket:', {
+        socketId: socket.id,
+        currentUsername: username
+      });
+      socket.disconnect();
+      setSocket(null);
+      (window as any).socket = null;
+    }
+  }, [socket, username]);
+
+  const selectUser = useCallback((username: string | null) => {
+    setSelectedUser(username);
+    setTargetUsername(username);
+  }, []);
+
+  const requestOnlineUsers = useCallback(() => {
+    if (socket) {
+      socket.emit('requestOnlineUsers');
+    }
+  }, [socket]);
+
+  // Handle socket events
+  useEffect(() => {
+    if (!socket) return;
+
+    // Comprehensive event logging
+    const eventTypes = [
+      'connect', 
+      'disconnect', 
+      'message', 
+      'message_updated', 
+      'previousMessages', 
+      'reaction_error'
+    ];
+
+    eventTypes.forEach(eventType => {
+      socket.on(eventType, (data: any) => {
+        console.log(`SOCKET EVENT: ${eventType}`, {
+          eventData: data,
+          timestamp: new Date().toISOString()
+        });
+      });
+    });
+
+    // Error handling
+    socket.on('connect_error', (error) => {
+      console.error('Socket Connection Error:', error);
+    });
+
+    socket.on('reaction_error', (errorData) => {
+      console.error('Reaction Error:', errorData);
+      toast.error('Failed to process reaction. Please try again.');
+    });
+
+    // Handle user events
+    const handleUserJoined = (users: string[]) => {
+      console.log('Context: Received online users:', users);
+      setOnlineUsers(users);
+    };
+
+    const handleUserLeft = (leftUsername: string) => {
+      console.log('Context: User left:', leftUsername);
+      setOnlineUsers(prev => prev.filter(u => u !== leftUsername));
+    };
+
+    const handleOnlineUsers = (users: string[]) => {
+      console.log('Context: Received online users from explicit request:', users);
+      setOnlineUsers(users);
+    };
+
+    // Handle messages
+    const handlePreviousMessages = (msgs: Message[]) => {
+      console.log('Context: Received previous messages:', msgs.length);
+      setMessages(msgs);
+    };
+
+    const handleNewMessage = (msg: Message) => {
+      console.log('Context: Received new message:', {
+        username: msg.username, 
+        to: msg.to, 
+        private: msg.private, 
+        content: msg.content
+      });
+      
+      // Add the new message to the messages array
+      setMessages(prevMessages => {
+        // Prevent duplicate messages
+        const isDuplicate = prevMessages.some(m => m.id === msg.id);
+        if (isDuplicate) return prevMessages;
+
+        // Always add the message if it's a public message
+        if (!msg.private) return [...prevMessages, msg];
+
+        // For private messages, only add if it's between the current user and the target user
+        const isRelevantPrivateMessage = 
+          (msg.username === username && msg.to === selectedUser) ||
+          (msg.username === selectedUser && msg.to === username);
+
+        return isRelevantPrivateMessage 
+          ? [...prevMessages, msg] 
+          : prevMessages;
+      });
+    };
+
+    const handleMessageError = (error: string) => {
+      console.error('Context: Message sending error:', error);
+      toast.error(error);
+    };
+
+    const handleMessageUpdated = (updatedMessage: Message) => {
+      console.log('Context: Detailed Message Update', {
+        event: 'message_updated',
+        messageId: updatedMessage.id,
+        content: updatedMessage.content,
+        reactions: updatedMessage.reactions,
+        reactionsLength: updatedMessage.reactions?.length
+      });
+      
+      setMessages(prevMessages => {
+        const messageIndex = prevMessages.findIndex(msg => msg.id === updatedMessage.id);
+        
+        if (messageIndex === -1) {
+          console.warn('Context: Updated message not found', {
+            updatedMessageId: updatedMessage.id
+          });
+          return prevMessages;
+        }
+
+        const newMessages = [...prevMessages];
+        newMessages[messageIndex] = {
+          ...prevMessages[messageIndex],
+          ...updatedMessage,
+          reactions: updatedMessage.reactions || []
+        };
+
+        return newMessages;
+      });
+    };
+
+    const handleReactionError = (data: { messageId: string; error: string }) => {
+      console.error('Context: Reaction error:', data);
+      toast.error(`Failed to add reaction: ${data.error}`);
+    };
+
+    // Register event listeners
+    socket.on('userJoined', handleUserJoined);
+    socket.on('userLeft', handleUserLeft);
+    socket.on('onlineUsers', handleOnlineUsers);
+    socket.on('previousMessages', handlePreviousMessages);
+    socket.on('message', handleNewMessage);
+    socket.on('message_error', handleMessageError);
+    socket.on('message_updated', handleMessageUpdated);
+    socket.on('reaction_error', handleReactionError);
+
+    // Cleanup on unmount or socket change
+    return () => {
+      eventTypes.forEach(eventType => {
+        socket.off(eventType);
+      });
+      socket.off('userJoined', handleUserJoined);
+      socket.off('userLeft', handleUserLeft);
+      socket.off('onlineUsers', handleOnlineUsers);
+      socket.off('previousMessages', handlePreviousMessages);
+      socket.off('message', handleNewMessage);
+      socket.off('message_error', handleMessageError);
+      socket.off('message_updated', handleMessageUpdated);
+      socket.off('reaction_error', handleReactionError);
+    };
+  }, [socket, username, selectedUser]);
+
+  // Provide context value
+  const value = {
+    socket,
+    username,
+    setUsername,
+    messages,
+    setMessages,
+    targetUsername,
+    setTargetUsername,
+    connect,
+    disconnect,
+    onlineUsers,
+    selectedUser,
+    selectUser,
+    requestOnlineUsers
+  };
+
+  return (
+    <SocketContext.Provider value={value}>
+      {children}
+    </SocketContext.Provider>
+  );
+};
 
 export const useSocket = () => {
   const context = useContext(SocketContext);
@@ -42,409 +356,12 @@ export const useSocket = () => {
   return context;
 };
 
-interface SocketProviderProps {
-  children: React.ReactNode;
-}
+export const useSocketContext = () => {
+  const context = useContext(SocketContext);
+  if (!context) {
+    throw new Error('useSocketContext must be used within a SocketProvider');
+  }
+  return context;
+};
 
-export function SocketProvider({ children }: SocketProviderProps) {
-  const [socket, setSocket] = useState<Socket | null>(null);
-  const [isConnected, setIsConnected] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [username, setUsername] = useState<string>('');
-  const [messages, setMessages] = useState<LocalMessage[]>([]);
-  const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
-  const [selectedUser, setSelectedUser] = useState<string | null>(null);
-  const reconnectAttempts = useRef(0);
-  const maxReconnectAttempts = 5;
-
-  // Cleanup on unmount
-  useEffect(() => {
-    console.log('SocketProvider mounted');
-    return () => {
-      console.log('SocketProvider unmounting, cleaning up socket');
-      if (socket) {
-        socket.disconnect();
-      }
-    };
-  }, [socket]);
-
-  const connect = useCallback(async (newUsername: string): Promise<void> => {
-    return new Promise((resolve, reject) => {
-      try {
-        console.log('Starting connection process for username:', newUsername);
-        setIsLoading(true);
-        setError(null);
-        
-        if (socket) {
-          console.log('Disconnecting existing socket');
-          socket.disconnect();
-        }
-
-        console.log('Creating new socket connection');
-        const newSocket = io('http://localhost:3001', {
-          auth: { username: newUsername },
-          transports: ['websocket', 'polling'],
-          reconnection: true,
-          reconnectionAttempts: 5,
-          reconnectionDelay: 1000,
-          timeout: 10000,
-          forceNew: true
-        });
-
-        console.log('Setting up connection timeout');
-        const timeoutId = setTimeout(() => {
-          console.log('Connection timeout reached');
-          newSocket.disconnect();
-          setError('Connection timeout');
-          setIsLoading(false);
-          reject(new Error('Connection timeout'));
-        }, 10000);
-
-        newSocket.on('connect_error', (error) => {
-          console.error('Socket connect_error:', error);
-          clearTimeout(timeoutId);
-          setError(error.message);
-          setIsLoading(false);
-          reject(error);
-        });
-
-        newSocket.on('connect', () => {
-          console.log('Socket connected successfully');
-          clearTimeout(timeoutId);
-          setIsConnected(true);
-          setUsername(newUsername);
-          setSocket(newSocket);
-          setIsLoading(false);
-          resolve();
-        });
-
-        newSocket.on('disconnect', (reason) => {
-          console.log('Socket disconnected:', reason);
-          setIsConnected(false);
-          if (reason === 'io server disconnect') {
-            setError('Disconnected by server');
-          }
-        });
-
-        newSocket.on('message', (message: LocalMessage) => {
-          console.log('Received message:', message);
-          setMessages(prev => {
-            // Check if message already exists to prevent duplicates
-            if (prev.some(m => m.id === message.id)) {
-              return prev;
-            }
-            return [...prev, {
-              ...message,
-              from: message.from || message.username, // Handle both new and old format
-              reactions: message.reactions || {}
-            }];
-          });
-        });
-
-        newSocket.on('previousMessages', (prevMessages: LocalMessage[]) => {
-          console.log('Received previous messages:', prevMessages);
-          setMessages(prevMessages.map(msg => ({
-            ...msg,
-            from: msg.from || msg.username, // Handle both new and old format
-            reactions: msg.reactions || {}
-          })));
-        });
-
-        newSocket.on('onlineUsers', (users: string[]) => {
-          console.log('Online users updated:', users);
-          setOnlineUsers(users);
-        });
-
-        newSocket.on('error', (error: string) => {
-          console.error('Socket error:', error);
-          setError(error);
-          reject(new Error(error));
-        });
-
-      } catch (err) {
-        console.error('Connection setup error:', err);
-        setError(err instanceof Error ? err.message : 'Failed to connect');
-        setIsLoading(false);
-        reject(err);
-      }
-    });
-  }, [socket]);
-
-  const updateMessageReactions = useCallback((messageId: string, emoji: string, reactingUser: string, isAdd: boolean) => {
-    setMessages(prev => prev.map(msg => {
-      if (msg.id === messageId) {
-        const reactions = msg.reactions || {};
-        const users = reactions[emoji] ?? [];
-        
-        if (isAdd && !users.includes(reactingUser)) {
-          return {
-            ...msg,
-            reactions: {
-              ...reactions,
-              [emoji]: [...users, reactingUser]
-            }
-          };
-        } else if (!isAdd && users.includes(reactingUser)) {
-          const updatedUsers = users.filter(user => user !== reactingUser);
-          const updatedReactions = { ...reactions };
-          
-          if (updatedUsers.length === 0) {
-            delete updatedReactions[emoji];
-          } else {
-            updatedReactions[emoji] = updatedUsers;
-          }
-          
-          return {
-            ...msg,
-            reactions: updatedReactions
-          };
-        }
-      }
-      return msg;
-    }));
-  }, []);
-
-  useEffect(() => {
-    if (!socket) return;
-
-    const handleConnect = () => {
-      console.log('Socket connected');
-      setIsConnected(true);
-      setIsLoading(false);
-      reconnectAttempts.current = 0;
-    };
-
-    const handleDisconnect = () => {
-      console.log('Socket disconnected');
-      setIsConnected(false);
-      setError('Disconnected from server');
-    };
-
-    const handleConnectError = (err: Error) => {
-      console.error('Socket connect_error:', err);
-      setError(err.message);
-      setIsLoading(false);
-
-      if (reconnectAttempts.current < maxReconnectAttempts) {
-        reconnectAttempts.current += 1;
-        setTimeout(() => {
-          connect(username);
-        }, 1000 * reconnectAttempts.current);
-      }
-    };
-
-    const handleMessage = (message: LocalMessage) => {
-      console.log('Received message:', message);
-      setMessages(prev => {
-        // Check if message already exists to prevent duplicates
-        if (prev.some(m => m.id === message.id)) {
-          return prev;
-        }
-        return [...prev, {
-          ...message,
-          from: message.from || message.username, // Handle both new and old format
-          reactions: message.reactions || {}
-        }];
-      });
-    };
-
-    const handleUserJoined = (user: string) => {
-      console.log('User joined:', user);
-      setOnlineUsers(prev => [...prev, user]);
-    };
-
-    const handleUserLeft = (user: string) => {
-      console.log('User left:', user);
-      setOnlineUsers(prev => prev.filter(u => u !== user));
-    };
-
-    const handleReaction = (messageId: string, emoji: string, reactingUser: string, isAdd: boolean) => {
-      console.log('Reaction event:', messageId, emoji, reactingUser, isAdd);
-      updateMessageReactions(messageId, emoji, reactingUser, isAdd);
-    };
-
-    socket.on('connect', handleConnect);
-    socket.on('disconnect', handleDisconnect);
-    socket.on('connect_error', handleConnectError);
-    socket.on('message', handleMessage);
-    socket.on('userJoined', handleUserJoined);
-    socket.on('userLeft', handleUserLeft);
-    socket.on('reaction', handleReaction);
-
-    return () => {
-      socket.off('connect', handleConnect);
-      socket.off('disconnect', handleDisconnect);
-      socket.off('connect_error', handleConnectError);
-      socket.off('message', handleMessage);
-      socket.off('userJoined', handleUserJoined);
-      socket.off('userLeft', handleUserLeft);
-      socket.off('reaction', handleReaction);
-    };
-  }, [socket, username, connect, maxReconnectAttempts, updateMessageReactions]);
-
-  const sendMessage = useCallback(async (text: string, file?: File | null, to?: string | null) => {
-    if (!socket || !text.trim()) return;
-
-    let fileUrl = '';
-    if (file) {
-      const formData = new FormData();
-      formData.append('file', file);
-      try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_SOCKET_URL}/upload` || 'http://localhost:3001/upload', {
-          method: 'POST',
-          body: formData,
-        });
-        const data = await response.json();
-        fileUrl = data.url;
-      } catch (error) {
-        console.error('Error uploading file:', error);
-        return;
-      }
-    }
-
-    const message = {
-      text: text.trim(),
-      username,  // Keep for backward compatibility
-      from: username,
-      to,
-      fileUrl: fileUrl || undefined,
-      timestamp: Date.now(),
-      reactions: {}
-    };
-
-    console.log('Sending message:', message);
-    socket.emit('message', message);
-  }, [socket, username]);
-
-  const addReaction = useCallback((messageId: string, emoji: string) => {
-    if (!socket) return;
-    
-    console.log('Adding reaction:', { messageId, emoji, username });
-    socket.emit('reaction', { 
-      messageId, 
-      emoji, 
-      username,
-      type: 'add'
-    });
-
-    // Optimistically update the UI
-    setMessages(prevMessages => 
-      prevMessages.map(msg => {
-        if (msg.id === messageId) {
-          const reactions = { ...(msg.reactions || {}) };
-          if (!reactions[emoji]) {
-            reactions[emoji] = [];
-          }
-          if (!reactions[emoji].includes(username)) {
-            reactions[emoji] = [...reactions[emoji], username];
-          }
-          return { ...msg, reactions };
-        }
-        return msg;
-      })
-    );
-  }, [socket, username]);
-
-  const removeReaction = useCallback((messageId: string, emoji: string) => {
-    if (!socket) return;
-
-    console.log('Removing reaction:', { messageId, emoji, username });
-    socket.emit('reaction', { 
-      messageId, 
-      emoji, 
-      username,
-      type: 'remove'
-    });
-
-    // Optimistically update the UI
-    setMessages(prevMessages => 
-      prevMessages.map(msg => {
-        if (msg.id === messageId) {
-          const reactions = { ...(msg.reactions || {}) };
-          if (reactions[emoji]) {
-            reactions[emoji] = reactions[emoji].filter(u => u !== username);
-            if (reactions[emoji].length === 0) {
-              delete reactions[emoji];
-            }
-          }
-          return { ...msg, reactions };
-        }
-        return msg;
-      })
-    );
-  }, [socket, username]);
-
-  useEffect(() => {
-    if (!socket) return;
-
-    const handleReaction = ({ messageId, emoji, username: reactingUser, type }: any) => {
-      console.log('Received reaction:', { messageId, emoji, reactingUser, type });
-      setMessages(prevMessages => 
-        prevMessages.map(msg => {
-          if (msg.id === messageId) {
-            const reactions = { ...(msg.reactions || {}) };
-            if (type === 'add') {
-              if (!reactions[emoji]) {
-                reactions[emoji] = [];
-              }
-              if (!reactions[emoji].includes(reactingUser)) {
-                reactions[emoji] = [...reactions[emoji], reactingUser];
-              }
-            } else if (type === 'remove') {
-              if (reactions[emoji]) {
-                reactions[emoji] = reactions[emoji].filter(u => u !== reactingUser);
-                if (reactions[emoji].length === 0) {
-                  delete reactions[emoji];
-                }
-              }
-            }
-            return { ...msg, reactions };
-          }
-          return msg;
-        })
-      );
-    };
-
-    socket.on('reaction', handleReaction);
-
-    return () => {
-      socket.off('reaction', handleReaction);
-    };
-  }, [socket]);
-
-  const disconnect = useCallback(() => {
-    if (socket) {
-      console.log('Disconnecting socket');
-      socket.disconnect();
-      setSocket(null);
-      setIsConnected(false);
-      setMessages([]);
-      setOnlineUsers([]);
-      setSelectedUser(null);
-    }
-  }, [socket]);
-
-  const value = {
-    socket,
-    messages,
-    username,
-    onlineUsers,
-    selectedUser,
-    setSelectedUser,
-    sendMessage,
-    addReaction,
-    removeReaction,
-    isConnected,
-    isLoading,
-    error,
-    disconnect,
-    connect,
-  };
-
-  return (
-    <SocketContext.Provider value={value}>
-      {children}
-    </SocketContext.Provider>
-  );
-}
+const SocketContext = createContext<SocketContextType | undefined>(undefined);

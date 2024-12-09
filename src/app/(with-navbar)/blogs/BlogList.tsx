@@ -2,52 +2,66 @@ import { getAllPosts } from '@/lib/blog';
 import Link from 'next/link';
 import Image from 'next/image';
 
+interface BlogCardProps {
+  title: string;
+  description: string;
+  slug: string;
+  image?: string;
+  date: string;
+}
+
+const BlogCard = ({ title, description, slug, image, date }: BlogCardProps) => {
+  return (
+    <Link href={`/blogs/${slug}`} className="group block h-full">
+      <div className="h-full w-full bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden transition-all duration-200 hover:scale-105 hover:shadow-xl border border-gray-200 dark:border-gray-700">
+        {image && (
+          <div className="relative w-full h-52">
+            <Image
+              src={image}
+              alt={title}
+              fill
+              className="object-cover transition-transform duration-200 group-hover:scale-105"
+              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+            />
+          </div>
+        )}
+        <div className="p-6">
+          <h3 className="text-xl font-semibold text-gray-800 dark:text-white mb-3 group-hover:text-blue-600 transition-colors duration-200">
+            {title}
+          </h3>
+          <p className="text-gray-600 dark:text-gray-300 mb-4 line-clamp-3">
+            {description}
+          </p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-auto">
+            {new Date(date).toLocaleDateString()}
+          </p>
+        </div>
+      </div>
+    </Link>
+  );
+};
+
 const FALLBACK_IMAGE = "https://images.unsplash.com/photo-1499750310107-5fef28a66643?w=800&auto=format&fit=crop&q=60";
 
 export default async function BlogList() {
   const posts = await getAllPosts();
 
+  console.log('Posts:', posts);
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-      {posts.map((post) => (
-        <Link 
-          key={post.id} 
-          href={`/blogs/${post.slug}`}
-          className="group relative bg-white rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-300"
-        >
-          <div className="relative h-64 overflow-hidden">
-            <Image
-              src={post.imgSrc || FALLBACK_IMAGE}
-              alt={post.title}
-              fill
-              className="object-cover transform group-hover:scale-110 transition-transform duration-500"
-              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-          </div>
-
-          <div className="relative p-6">
-            <div className="flex items-center justify-between mb-4">
-              <span className="px-4 py-1 rounded-full text-sm font-medium bg-gradient-to-r from-blue-600 to-purple-600 text-white transform group-hover:scale-105 transition-all duration-300">
-                {post.category}
-              </span>
-              <span className="text-gray-500 text-sm font-medium">
-                {post.readTime}
-              </span>
-            </div>
-
-            <h2 className="text-xl font-bold mb-3 text-gray-900 group-hover:text-blue-600 transition-colors duration-200">
-              {post.title}
-            </h2>
-
-            <p className="text-gray-600 text-sm line-clamp-2 mb-4 group-hover:text-gray-700 transition-colors duration-200">
-              {post.description}
-            </p>
-
-            <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-600 to-purple-600 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left" />
-          </div>
-        </Link>
-      ))}
-    </div>
+    <main className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <div className="container mx-auto max-w-7xl grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 px-4 sm:px-6 lg:px-8 py-8">
+        {posts.map((post) => (
+          <BlogCard
+            key={post.slug}
+            title={post.title}
+            description={post.description}
+            slug={post.slug}
+            image={post.imgSrc || FALLBACK_IMAGE}
+            date={post.date}
+          />
+        ))}
+      </div>
+    </main>
   );
 }

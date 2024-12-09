@@ -1,153 +1,182 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
-import { Box, TextField, IconButton, Paper, Tooltip, Popper, ClickAwayListener } from '@mui/material';
-import SendIcon from '@mui/icons-material/Send';
-import AttachFileIcon from '@mui/icons-material/AttachFile';
-import EmojiEmotionsIcon from '@mui/icons-material/EmojiEmotions';
-import data from '@emoji-mart/data';
-import Picker from '@emoji-mart/react';
+import { useState, useRef, ChangeEvent } from 'react';
+import { Box, TextField, IconButton, Tooltip, Typography } from '@mui/material';
+import { Send as SendIcon, AttachFile as AttachFileIcon } from '@mui/icons-material';
+import { motion } from 'framer-motion';
+import { useSocket } from '@/lib/socket/context';
+import toast from 'react-hot-toast'; // Assuming you have react-hot-toast installed
 
 interface ChatInputProps {
-  value: string;
-  onChange: (value: string) => void;
-  onSubmit: (e: React.FormEvent) => void;
-  placeholder?: string;
+  privateChat?: boolean;
+  recipient?: string | null;
+  onTyping?: (isTyping: boolean) => void;
 }
 
-export default function ChatInput({ value, onChange, onSubmit, placeholder }: ChatInputProps) {
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+export default function ChatInput({ privateChat, recipient, onTyping }: ChatInputProps) {
+  const [message, setMessage] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
+  const { socket } = useSocket();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const typingTimeoutRef = useRef<NodeJS.Timeout>();
 
-  const handleEmojiSelect = (emoji: any) => {
-    const cursorPosition = inputRef.current?.selectionStart || value.length;
-    const newValue = value.slice(0, cursorPosition) + emoji.native + value.slice(cursorPosition);
-    onChange(newValue);
-    setShowEmojiPicker(false);
-  };
-
-  const handleEmojiButtonClick = (event: React.MouseEvent<HTMLElement>) => {
-    setAnchorEl(event.currentTarget);
-    setShowEmojiPicker(!showEmojiPicker);
-  };
-
-  const handleClickAway = () => {
-    setShowEmojiPicker(false);
-  };
-
-  // Focus input when emoji picker closes
-  useEffect(() => {
-    if (!showEmojiPicker) {
-      inputRef.current?.focus();
+  const handleTyping = () => {
+    if (!isTyping) {
+      setIsTyping(true);
+      onTyping?.(true);
     }
-  }, [showEmojiPicker]);
+
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+
+    typingTimeoutRef.current = setTimeout(() => {
+      setIsTyping(false);
+      onTyping?.(false);
+    }, 1000);
+  };
+
+  const handleSend = () => {
+    if (!socket) {
+      toast.error('Socket connection lost. Please reconnect.');
+      return;
+    }
+
+    const trimmedMessage = message.trim();
+    if (!trimmedMessage) {
+      toast.error('Cannot send empty message');
+      return;
+    }
+
+    try {
+      socket.emit('message', {
+        content: trimmedMessage,
+        to: recipient
+      });
+      
+      // Clear input after successful send
+      setMessage('');
+    } catch (error) {
+      console.error('Error sending message:', error);
+      toast.error('Failed to send message. Please try again.');
+    }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
+
+  const handleFileSelect = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const base64Data = reader.result as string;
+        socket?.emit('message', {
+          content: `Sent ${file.type.startsWith('image/') ? 'an image' : 'a file'}: ${file.name}`,
+          to: recipient,
+          attachment: {
+            type: file.type,
+            name: file.name,
+            data: base64Data
+          }
+        });
+      };
+      reader.readAsDataURL(file);
+    } catch (error) {
+      console.error('Error reading file:', error);
+    }
+  };
 
   return (
     <Box
-      component="form"
-      onSubmit={onSubmit}
+      component={motion.div}
+      initial={{ y: 20, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
       sx={{
         display: 'flex',
         gap: 1,
-        width: '100%',
         alignItems: 'flex-end',
+        p: 2,
+        bgcolor: 'background.paper',
+        borderTop: '1px solid',
+        borderColor: 'divider',
       }}
     >
-      <Tooltip title="Add emoji" placement="top">
-        <IconButton
-          onClick={handleEmojiButtonClick}
-          size="small"
-          color="primary"
-          sx={{ mb: 1 }}
+      {privateChat && !recipient && (
+        <Typography
+          variant="body2"
+          sx={{
+            flex: 1,
+            color: 'text.secondary',
+            textAlign: 'center',
+          }}
         >
-          <EmojiEmotionsIcon />
-        </IconButton>
-      </Tooltip>
+          Select a user to start private chat
+        </Typography>
+      )}
 
-      <ClickAwayListener onClickAway={handleClickAway}>
-        <Box sx={{ position: 'relative', flex: 1 }}>
+      {(!privateChat || recipient) && (
+        <>
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileSelect}
+            style={{ display: 'none' }}
+            accept="image/*,video/*,audio/*"
+          />
+
+          <Tooltip title="Attach file">
+            <IconButton
+              onClick={() => fileInputRef.current?.click()}
+              sx={{ color: 'text.secondary' }}
+            >
+              <AttachFileIcon />
+            </IconButton>
+          </Tooltip>
+
           <TextField
-            inputRef={inputRef}
             fullWidth
             multiline
             maxRows={4}
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            placeholder={placeholder}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                onSubmit(e);
-              }
+            value={message}
+            onChange={(e) => {
+              setMessage(e.target.value);
+              handleTyping();
             }}
+            onKeyPress={handleKeyPress}
+            placeholder={privateChat ? `Message ${recipient}` : "Type a message"}
             sx={{
               '& .MuiOutlinedInput-root': {
-                borderRadius: 2,
-                backgroundColor: 'background.paper',
-                '&:hover': {
-                  '& > fieldset': {
-                    borderColor: 'primary.main',
-                  },
-                },
+                borderRadius: 3,
               },
             }}
           />
 
-          <Popper
-            open={showEmojiPicker}
-            anchorEl={anchorEl}
-            placement="top-start"
+          <IconButton
+            onClick={handleSend}
+            disabled={!message.trim()}
             sx={{
-              zIndex: 1000,
-              filter: 'drop-shadow(0px 2px 8px rgba(0,0,0,0.32))',
-              mt: 1.5,
-              '&[data-popper-placement*="top"] .arrow': {
-                bottom: 0,
-                ml: -1,
-                '&::before': {
-                  content: '""',
-                  position: 'absolute',
-                  top: 0,
-                  right: 0,
-                  transform: 'translateY(50%) rotate(45deg)',
-                  backgroundColor: 'background.paper',
-                  width: 10,
-                  height: 10,
-                },
+              bgcolor: 'primary.main',
+              color: 'primary.contrastText',
+              '&:hover': {
+                bgcolor: 'primary.dark',
+              },
+              '&.Mui-disabled': {
+                bgcolor: 'action.disabledBackground',
+                color: 'action.disabled',
               },
             }}
           >
-            <Box sx={{ bgcolor: 'background.paper', p: 1, borderRadius: 1 }}>
-              <Picker
-                data={data}
-                onEmojiSelect={handleEmojiSelect}
-                theme="light"
-                previewPosition="none"
-                skinTonePosition="none"
-              />
-            </Box>
-          </Popper>
-        </Box>
-      </ClickAwayListener>
-
-      <Tooltip title="Send message" placement="top">
-        <IconButton
-          type="submit"
-          color="primary"
-          disabled={!value.trim()}
-          sx={{
-            mb: 1,
-            bgcolor: value.trim() ? 'primary.main' : 'action.disabledBackground',
-            color: value.trim() ? 'common.white' : 'action.disabled',
-            '&:hover': {
-              bgcolor: value.trim() ? 'primary.dark' : 'action.disabledBackground',
-            },
-          }}
-        >
-          <SendIcon />
-        </IconButton>
-      </Tooltip>
+            <SendIcon />
+          </IconButton>
+        </>
+      )}
     </Box>
   );
 }

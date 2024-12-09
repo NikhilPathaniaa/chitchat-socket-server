@@ -1,154 +1,316 @@
 import express from 'express';
 import { createServer } from 'http';
-import { Server, Socket } from 'socket.io';
+import { Server } from 'socket.io';
 import cors from 'cors';
 import { v4 as uuidv4 } from 'uuid';
 
-interface Message {
-  id: string;
-  text: string;
-  username: string;
-  timestamp: number;
-  to?: string;
-  fileUrl?: string;
-  reactions?: { [emoji: string]: string[] };
-}
-
-interface ConnectedUser {
-  id: string;
-  username: string;
-}
-
 const app = express();
+
+// Enable CORS for all routes
 app.use(cors({
-  origin: ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002'],
+  origin: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
   methods: ['GET', 'POST'],
   credentials: true
 }));
 
 const httpServer = createServer(app);
+
+// Configure Socket.IO with CORS
 const io = new Server(httpServer, {
   cors: {
-    origin: ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002'],
+    origin: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
     methods: ['GET', 'POST'],
-    credentials: true
+    credentials: true,
+    allowedHeaders: ['my-custom-header'],
   },
+  allowEIO3: true, // Enable compatibility mode
   transports: ['websocket', 'polling']
 });
 
-// Debug route
-app.get('/status', (req, res) => {
-  res.json({ status: 'Server is running' });
-});
+interface User {
+  id: string;
+  username: string;
+  lastSeen: number;
+}
 
-const connectedUsers = new Map<string, ConnectedUser>();
+interface Message {
+  id: string;
+  username: string;
+  content: string;
+  timestamp: number;
+  reactions: { emoji: string; username: string }[];
+  private?: boolean;
+  to?: string;
+  attachment?: {
+    type: 'image' | 'file' | 'video';
+    url: string;
+    name?: string;
+    size?: number;
+  };
+}
+
+const users = new Map<string, User>();
 const messages: Message[] = [];
 
-io.use((socket: Socket, next) => {
-  console.log('Connection middleware - Auth:', socket.handshake.auth);
+// Cleanup inactive users every 5 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const [id, user] of users.entries()) {
+    if (now - user.lastSeen > 300000) { // Remove after 5 minutes of inactivity
+      users.delete(id);
+      io.emit('userLeft', user.username);
+    }
+  }
+}, 300000);
+
+io.on('connection', (socket) => {
+  console.log('User connected');
+
+  // Handle authentication
   const username = socket.handshake.auth.username;
-  
   if (!username) {
-    console.log('Connection rejected: No username provided');
-    return next(new Error('Username is required'));
+    console.log('No username provided');
+    socket.emit('auth_error', 'No username provided');
+    socket.disconnect(true);
+    return;
   }
 
-  if (Array.from(connectedUsers.values()).some(user => user.username === username)) {
-    console.log('Connection rejected: Username already taken');
-    return next(new Error('Username is already taken'));
+  // Check if username is already taken
+  const isUsernameTaken = Array.from(users.values()).some(
+    user => user.username === username
+  );
+
+  if (isUsernameTaken) {
+    console.log(`Username ${username} is already taken`);
+    socket.emit('auth_error', 'Username is already taken');
+    socket.disconnect(true);
+    return;
   }
 
-  socket.data.username = username;
-  console.log('Connection authorized for username:', username);
-  next();
-});
-
-io.on('connection', (socket: Socket) => {
-  console.log('New connection:', {
-    id: socket.id,
-    username: socket.data.username,
-    transport: socket.conn.transport.name,
-    handshake: socket.handshake
+  // Add user to users map
+  users.set(socket.id, { 
+    id: socket.id, 
+    username, 
+    lastSeen: Date.now() 
   });
   
-  const username = socket.data.username;
+  console.log(`User ${username} authenticated and added to users`);
   
-  // Add user to connected users
-  connectedUsers.set(socket.id, { id: socket.id, username });
-  console.log('User added to connected users:', { id: socket.id, username });
-  
-  // Broadcast updated user list
-  const onlineUsers = Array.from(connectedUsers.values()).map(user => user.username);
-  console.log('Broadcasting online users:', onlineUsers);
-  io.emit('onlineUsers', onlineUsers);
+  // Notify all clients about the new user
+  io.emit('userJoined', Array.from(users.values()).map(u => u.username));
+  socket.emit('auth_success', username);
 
-  // Send existing messages to new user
-  console.log('Sending previous messages to new user:', messages.length);
+  // Send previous messages to the new user
   socket.emit('previousMessages', messages);
 
-  socket.on('message', (messageData: Partial<Message>) => {
-    console.log('Received message:', messageData);
-    if (!messageData.text) {
-      console.log('Message rejected: No text');
+  // Modify message creation to include reactions
+  const createMessage = (content: string, username: string) => {
+    const newMessage = {
+      id: uuidv4(),
+      content,
+      username,
+      timestamp: Date.now(),
+      reactions: []  // Initialize with empty reactions array
+    };
+    messages.push(newMessage);
+    return newMessage;
+  };
+
+  socket.on('message', (data: { 
+    content: string, 
+    to?: string, 
+    attachment?: {
+      type: 'image' | 'file' | 'video';
+      data?: string;
+      url?: string;
+      name?: string;
+      size?: number;
+    } 
+  }) => {
+    const user = users.get(socket.id);
+    if (!user) {
+      console.error('Message from unknown user');
+      socket.emit('message_error', 'Authentication required');
       return;
     }
 
-    const message: Message = {
-      id: uuidv4(),
-      text: messageData.text.trim(),
-      username,
-      timestamp: Date.now(),
-      to: messageData.to || undefined,
-      fileUrl: messageData.fileUrl || undefined,
-      reactions: {},
-    };
+    console.log('Server: Received message', {
+      username: user.username,
+      content: data.content,
+      to: data.to,
+      hasAttachment: !!data.attachment
+    });
 
-    messages.push(message);
-    console.log('Broadcasting message:', message);
-    io.emit('message', message);
-  });
+    const message = createMessage(data.content, user.username);
 
-  socket.on('reaction:add', (messageId: string, emoji: string, username: string) => {
-    const message = messages.find(m => m.id === messageId);
-    if (message) {
-      if (!message.reactions) {
-        message.reactions = {};
+    console.log('Server: Constructed message', message);
+
+    try {
+      if (data.to) {
+        // Send private message only to sender and recipient
+        const recipientSocket = Array.from(users.entries())
+          .find(([_, u]) => u.username === data.to)?.[0];
+        
+        if (recipientSocket) {
+          console.log('Server: Sending private message to', data.to);
+          io.to(recipientSocket).emit('message', message);
+          socket.emit('message', message);
+        } else {
+          console.warn(`Recipient ${data.to} not found`);
+          socket.emit('message_error', `Recipient ${data.to} not online`);
+        }
+      } else {
+        console.log('Server: Broadcasting message to all users');
+        io.emit('message', message);
       }
-      if (!message.reactions[emoji]) {
-        message.reactions[emoji] = [];
-      }
-      if (!message.reactions[emoji].includes(username)) {
-        message.reactions[emoji].push(username);
-        io.emit('reaction:add', messageId, emoji, username);
-      }
+    } catch (error) {
+      console.error('Error sending message:', error);
+      socket.emit('message_error', 'Failed to send message');
     }
   });
 
-  socket.on('reaction:remove', (messageId: string, emoji: string, username: string) => {
+  socket.on('add_reaction', (data: { messageId: string; emoji: string; username: string }) => {
+    console.log('SERVER: Detailed Reaction Event', {
+      event: 'add_reaction',
+      socketId: socket.id,
+      data: JSON.stringify(data, null, 2),
+      totalMessagesCount: messages.length
+    });
+
+    const { messageId, emoji, username } = data;
+
+    // Find the message by ID
     const message = messages.find(m => m.id === messageId);
-    if (message && message.reactions && message.reactions[emoji]) {
-      message.reactions[emoji] = message.reactions[emoji].filter(u => u !== username);
-      if (message.reactions[emoji].length === 0) {
-        delete message.reactions[emoji];
-      }
-      io.emit('reaction:remove', messageId, emoji, username);
+    
+    if (!message) {
+      console.error('SERVER: Message not found for reaction', {
+        messageId,
+        emoji,
+        username
+      });
+      socket.emit('reaction_error', { 
+        messageId, 
+        error: 'Message not found'
+      });
+      return;
     }
+
+    // Ensure reactions array exists
+    message.reactions = message.reactions || [];
+
+    // Check if user already reacted with this emoji
+    const existingReactionIndex = message.reactions.findIndex(
+      r => r.emoji === emoji && r.username === username
+    );
+
+    if (existingReactionIndex !== -1) {
+      // Remove reaction if already exists
+      message.reactions.splice(existingReactionIndex, 1);
+      console.log('SERVER: Removed existing reaction', {
+        messageId,
+        emoji,
+        username
+      });
+    } else {
+      // Add new reaction
+      const newReaction = { emoji, username };
+      message.reactions.push(newReaction);
+      console.log('SERVER: Added new reaction', {
+        messageId,
+        emoji,
+        username
+      });
+    }
+
+    // Broadcast updated message to all clients
+    io.emit('message_updated', {
+      ...message,
+      reactions: message.reactions  // Explicitly send reactions
+    });
+
+    console.log('SERVER: Emitted message_updated event', {
+      messageId: message.id,
+      reactionsCount: message.reactions.length
+    });
   });
 
   socket.on('disconnect', () => {
-    console.log('User disconnected:', { id: socket.id, username });
-    // Remove user from connected users
-    connectedUsers.delete(socket.id);
+    const user = users.get(socket.id);
+    if (user) {
+      // Remove user from users map
+      users.delete(socket.id);
+      
+      // Remove user's messages
+      const userMessages = messages.filter(m => 
+        m.username === user.username || 
+        m.to === user.username
+      );
+      userMessages.forEach(msg => {
+        const index = messages.findIndex(m => m.id === msg.id);
+        if (index !== -1) {
+          messages.splice(index, 1);
+        }
+      });
+      
+      // Notify all clients about user leaving
+      io.emit('userLeft', user.username);
+      io.emit('userMessages', messages);
+      
+      console.log(`User ${user.username} disconnected and data cleaned up`);
+    }
+  });
+
+  // Handle explicit logout
+  socket.on('logout', () => {
+    const user = users.get(socket.id);
+    if (user) {
+      // Remove user from users map
+      users.delete(socket.id);
+      
+      // Remove user's messages
+      const userMessages = messages.filter(m => 
+        m.username === user.username || 
+        m.to === user.username
+      );
+      userMessages.forEach(msg => {
+        const index = messages.findIndex(m => m.id === msg.id);
+        if (index !== -1) {
+          messages.splice(index, 1);
+        }
+      });
+      
+      // Notify all clients
+      io.emit('userLeft', user.username);
+      io.emit('userMessages', messages);
+      
+      console.log(`User ${user.username} logged out and data cleaned up`);
+    }
     
-    // Broadcast updated user list
-    const onlineUsers = Array.from(connectedUsers.values()).map(user => user.username);
-    console.log('Broadcasting updated online users after disconnect:', onlineUsers);
-    io.emit('onlineUsers', onlineUsers);
+    // Disconnect the socket
+    socket.disconnect(true);
+  });
+
+  // Update user's last seen timestamp on any activity
+  socket.on('activity', () => {
+    const user = users.get(socket.id);
+    if (user) {
+      user.lastSeen = Date.now();
+    }
+  });
+
+  socket.on('requestOnlineUsers', () => {
+    const onlineUsernames = Array.from(users.values()).map(u => u.username);
+    console.log('Sending online users to client:', onlineUsernames);
+    socket.emit('onlineUsers', onlineUsernames);
   });
 });
 
-const PORT = process.env.PORT || 3001;
+// Add health check endpoint
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'healthy' });
+});
 
+const PORT = process.env.PORT || 3001;
 httpServer.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`Server is running on port ${PORT}`);
 });

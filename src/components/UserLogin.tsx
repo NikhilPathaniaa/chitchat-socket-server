@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { Box, Button, TextField, Typography, Paper } from '@mui/material';
 import { useSocket } from '@/lib/socket/context';
 import toast from 'react-hot-toast';
-import Cookies from 'js-cookie';
 
 export default function UserLogin() {
   const [username, setUsername] = useState('');
@@ -14,22 +13,21 @@ export default function UserLogin() {
   const router = useRouter();
   const { socket, connect } = useSocket();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setIsLoading(true);
     
     if (!username.trim()) {
       setError('Username is required');
+      setIsLoading(false);
       return;
     }
-
-    setIsLoading(true);
     
     try {
       setError('');
       const trimmedUsername = username.trim();
       setUsername(trimmedUsername);
-      await connect(trimmedUsername);
-      Cookies.set('username', trimmedUsername);
+      connect();
       router.push('/chat/room');
       toast.success('Connected successfully!');
     } catch (error) {
@@ -55,21 +53,15 @@ export default function UserLogin() {
         component="h1" 
         gutterBottom 
         align="center"
-        sx={{
-          fontWeight: 700,
-          background: 'linear-gradient(135deg, #2196f3 0%, #1976d2 100%)',
-          backgroundClip: 'text',
-          color: 'transparent',
-          mb: 4
-        }}
+        sx={{ mb: 4 }}
       >
-        ChitChat
+        Welcome to ChitChat
       </Typography>
 
       <form onSubmit={handleSubmit}>
         <TextField
           fullWidth
-          label="Username"
+          label="Enter your username"
           variant="outlined"
           value={username}
           onChange={(e) => setUsername(e.target.value)}
@@ -80,21 +72,25 @@ export default function UserLogin() {
         />
 
         <Button
-          type="submit"
           fullWidth
+          type="submit"
           variant="contained"
           size="large"
           disabled={isLoading}
-          sx={{
-            background: 'linear-gradient(135deg, #2196f3 0%, #1976d2 100%)',
-            '&:hover': {
-              background: 'linear-gradient(135deg, #1976d2 0%, #1565c0 100%)',
-            }
-          }}
+          sx={{ mb: 2 }}
         >
           {isLoading ? 'Connecting...' : 'Join Chat'}
         </Button>
       </form>
+
+      <Typography 
+        variant="body2" 
+        color="text.secondary" 
+        align="center"
+        sx={{ mt: 2 }}
+      >
+        Start chatting with people around the world!
+      </Typography>
     </Paper>
   );
 }

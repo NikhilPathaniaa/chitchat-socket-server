@@ -2,95 +2,158 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.initSocket = initSocket;
 const socket_io_1 = require("socket.io");
-const users = [];
+const uuid_1 = require("uuid");
 const messages = [];
-function generateMessageId() {
-    return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+const userSockets = new Map();
+function broadcastOnlineUsers(io) {
+    const onlineUsers = Array.from(userSockets.keys());
+    console.log('Server: Broadcasting online users:', onlineUsers);
+    io.emit('onlineUsers', onlineUsers);
 }
-function initSocket(server) {
-    const io = new socket_io_1.Server(server, {
+function initSocket(httpServer) {
+    const io = new socket_io_1.Server(httpServer, {
         cors: {
-            origin: "http://localhost:3000",
-            methods: ["GET", "POST"],
-            credentials: true
+            origin: ['http://localhost:3000', 'http://localhost:3001'],
+            methods: ['GET', 'POST'],
+            credentials: true,
+            allowedHeaders: ['authorization', 'content-type']
         },
+        allowEIO3: true,
         pingTimeout: 60000,
         pingInterval: 25000,
         transports: ['websocket', 'polling'],
-        allowEIO3: true
+        path: '/socket.io/'
     });
-    io.use((socket, next) => {
-        const username = socket.handshake.auth?.username;
-        if (!username) {
-            return next(new Error("Invalid username"));
-        }
-        socket.username = username;
-        next();
+    io.engine.on("connection_error", (err) => {
+        console.log('Server: Connection error:', err.req); // the request object
+        console.log('Server: Connection error code:', err.code); // the error code
+        console.log('Server: Connection error message:', err.message); // the error message
+        console.log('Server: Connection error context:', err.context); // some additional error context
     });
     io.on('connection', (socket) => {
-        console.log('User connected:', socket.username);
-        // Add user to online users
-        const user = {
-            id: socket.id,
-            username: socket.username,
-            lastSeen: Date.now()
-        };
-        users.push(user);
-        // Send previous messages and current online users to the newly connected user
-        socket.emit('previousMessages', messages);
-        io.emit('onlineUsers', users);
-        socket.on('message', (messageData) => {
-            const newMessage = {
-                id: generateMessageId(),
-                text: messageData.text || '',
-                username: socket.username,
+        const typedSocket = socket;
+        if (!typedSocket.handshake?.auth?.username) {
+            console.log('Server: Client tried to connect without username');
+            socket.disconnect();
+            return;
+        }
+        const username = typedSocket.handshake.auth.username;
+        typedSocket.username = username;
+        // Remove any existing socket for this username
+        if (userSockets.has(username)) {
+            const existingSocket = userSockets.get(username);
+            if (existingSocket) {
+                existingSocket.disconnect();
+                userSockets.delete(username);
+            }
+        }
+        // Store user socket
+        userSockets.set(username, typedSocket);
+        console.log('Server: User connected:', username);
+        console.log('Server: Current online users:', Array.from(userSockets.keys()));
+        // Broadcast online users to all clients
+        broadcastOnlineUsers(io);
+        socket.on('disconnect', () => {
+            console.log('Server: User disconnecting:', username);
+            userSockets.delete(username);
+            broadcastOnlineUsers(io);
+        });
+        socket.on('getOnlineUsers', () => {
+            const onlineUsers = Array.from(userSockets.keys());
+            console.log('Server: Client requested online users. Broadcasting:', onlineUsers);
+            io.emit('onlineUsers', onlineUsers); // Broadcast to all clients
+        });
+        socket.on('joinRoom', ({ targetUsername }) => {
+            if (!typedSocket.username)
+                return;
+            // Leave all rooms first
+            socket.rooms.forEach(room => {
+                if (room !== socket.id) {
+                    socket.leave(room);
+                }
+            });
+            if (targetUsername) {
+                // Join private chat room
+                const room = [typedSocket.username, targetUsername].sort().join('-');
+                socket.join(room);
+                console.log('Server: User', username, 'joined room:', room);
+                // Send previous messages for this room
+                const roomMessages = messages.filter(m => {
+                    const messageUsers = [m.username, m.to].sort().join('-');
+                    return messageUsers === room;
+                });
+                socket.emit('previousMessages', roomMessages);
+            }
+            else {
+                // Send public messages
+                const publicMessages = messages.filter(m => !m.to);
+                socket.emit('previousMessages', publicMessages);
+            }
+        });
+        socket.on('message', (data) => {
+            if (!typedSocket.username)
+                return;
+            const message = {
+                id: (0, uuid_1.v4)(),
+                username: typedSocket.username,
+                content: data.content,
                 timestamp: Date.now(),
-                reactions: {},
-                ...messageData,
+                reactions: [],
+                to: data.to,
+                attachment: data.attachment
             };
-            messages.push(newMessage);
-            if (newMessage.private && newMessage.to) {
+            if (data.to) {
                 // Send private message only to sender and recipient
-                const recipientSocket = Array.from(io.sockets.sockets.values())
-                    .find((s) => s.username === newMessage.to);
-                if (recipientSocket) {
-                    recipientSocket.emit('message', newMessage);
-                    socket.emit('message', newMessage);
+                const targetSocket = userSockets.get(data.to);
+                if (targetSocket) {
+                    console.log('Server: Sending private message from', username, 'to', data.to);
+                    targetSocket.emit('message', message);
+                    socket.emit('message', message);
                 }
             }
             else {
-                // Broadcast public message to all users
-                io.emit('message', newMessage);
+                // Public message
+                io.emit('message', message);
             }
+            messages.push(message);
         });
-        socket.on('reaction', (data) => {
-            const message = messages.find(m => m.id === data.messageId);
-            if (message) {
-                if (!message.reactions[data.emoji]) {
-                    message.reactions[data.emoji] = [];
+        socket.on('messageReaction', ({ messageId, emoji, type }) => {
+            if (!typedSocket.username)
+                return;
+            const message = messages.find(m => m.id === messageId);
+            if (!message) {
+                console.log('Message not found:', messageId);
+                return;
+            }
+            if (type === 'add') {
+                // Add reaction if it doesn't exist
+                if (!message.reactions.some(r => r.emoji === emoji && r.username === typedSocket.username)) {
+                    message.reactions.push({ emoji, username: typedSocket.username });
                 }
-                const userIndex = message.reactions[data.emoji].indexOf(data.username);
-                if (data.remove && userIndex !== -1) {
-                    message.reactions[data.emoji].splice(userIndex, 1);
-                    if (message.reactions[data.emoji].length === 0) {
-                        delete message.reactions[data.emoji];
-                    }
-                }
-                else if (!data.remove && userIndex === -1) {
-                    message.reactions[data.emoji].push(data.username);
-                }
-                io.emit('messageReaction', {
-                    messageId: data.messageId,
-                    reactions: message.reactions
+            }
+            else {
+                // Remove reaction
+                message.reactions = message.reactions.filter(r => !(r.emoji === emoji && r.username === typedSocket.username));
+            }
+            // Broadcast the reaction update
+            if (message.to) {
+                // Private message reaction
+                const room = [message.username, message.to].sort().join('-');
+                io.to(room).emit('messageReaction', {
+                    messageId,
+                    emoji,
+                    username: typedSocket.username,
+                    type
                 });
             }
-        });
-        socket.on('disconnect', () => {
-            console.log('User disconnected:', socket.username);
-            const index = users.findIndex(u => u.id === socket.id);
-            if (index !== -1) {
-                users.splice(index, 1);
-                io.emit('onlineUsers', users);
+            else {
+                // Public message reaction
+                io.emit('messageReaction', {
+                    messageId,
+                    emoji,
+                    username: typedSocket.username,
+                    type
+                });
             }
         });
     });
