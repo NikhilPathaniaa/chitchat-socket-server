@@ -11,7 +11,7 @@ const nextConfig = {
     serverComponentsExternalPackages: ['mongoose'],
     appDir: true
   },
-  webpack: (config, { isServer }) => {
+  webpack: (config, { isServer, nextRuntime }) => {
     if (!isServer) {
       config.resolve.fallback = {
         ...config.resolve.fallback,
@@ -21,7 +21,7 @@ const nextConfig = {
       };
     }
     
-    // Add explicit handling for client reference manifests
+    // Ensure client reference manifests are handled
     config.optimization.moduleIds = 'named';
     
     return config;
