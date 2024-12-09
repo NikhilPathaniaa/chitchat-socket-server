@@ -24,34 +24,11 @@ const nextConfig = {
   // Experimental features
   experimental: {
     outputFileTracingRoot: path.join(__dirname, '.'),
-    serverComponentsExternalPackages: ['mongoose', 'socket.io', 'express'],
-    appDir: true,
-    
-    // Tracing configuration
-    outputFileTracing: true,
-    clientReferenceManifest: {
-      resolveClientReferencePaths: (filePath) => {
-        // Include specific paths for tracing
-        const tracePaths = [
-          '(with-navbar)',
-          'components',
-          'lib',
-          'data'
-        ];
-        return tracePaths.some(path => filePath.includes(path));
-      }
-    }
+    serverComponentsExternalPackages: ['mongoose', 'socket.io', 'express']
   },
   
   // Webpack configuration
   webpack: (config, { isServer, nextRuntime }) => {
-    // Custom file tracing
-    config.plugins.push(
-      new (require('webpack')).DefinePlugin({
-        'process.env.NEXT_TRACE_CUSTOM': JSON.stringify(true)
-      })
-    );
-
     // Explicit module resolution
     config.resolve.modules = [
       path.resolve(__dirname, 'src'),
@@ -65,8 +42,7 @@ const nextConfig = {
         path.resolve(__dirname, 'node_modules'),
         path.resolve(__dirname, 'src/app/(with-navbar)'),
         path.resolve(__dirname, 'src/components'),
-        path.resolve(__dirname, 'src/lib'),
-        path.resolve(__dirname, 'src/data')
+        path.resolve(__dirname, 'src/lib')
       ]
     };
 
@@ -82,9 +58,6 @@ const nextConfig = {
 
     // Module ID configuration
     config.optimization.moduleIds = 'named';
-
-    // Ensure client reference manifest generation
-    config.optimization.runtimeChunk = 'single';
 
     return config;
   },

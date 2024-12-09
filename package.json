@@ -2,6 +2,9 @@
   "name": "chitchat",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=18.17.0 <21.0.0"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -9,8 +12,7 @@
     "build:clean": "rm -rf .next && next build",
     "build:server": "tsc --project tsconfig.server.json",
     "server": "npm run build:server && nodemon dist/server/index.js",
-    "server:prod": "npm run build:server && node dist/server/index.js",
-    "vercel-build": "npm run build:clean"
+    "server:prod": "npm run build:server && node dist/server/index.js"
   },
   "dependencies": {
     "@emoji-mart/data": "^1.2.1",
