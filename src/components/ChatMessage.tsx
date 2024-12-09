@@ -9,18 +9,19 @@ import DownloadIcon from '@mui/icons-material/Download';
 import AddReactionIcon from '@mui/icons-material/AddReaction';
 import { format } from 'date-fns';
 import { useState } from 'react';
-import { Message } from '@/lib/socket/context';
+import { Message } from '@/server/socket';
 import { useSocket } from '@/lib/socket/context';
 import toast from 'react-hot-toast';
 
 interface ChatMessageProps {
   message: Message;
   isOwnMessage: boolean;
+  currentUser: string;
 }
 
-const QUICK_REACTIONS = ['👍', '❤️', '😂', '😮', '😢', '👏'];
+const REACTION_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '😡'];
 
-export default function ChatMessage({ message, isOwnMessage }: ChatMessageProps) {
+const ChatMessage: React.FC<ChatMessageProps> = ({ message, isOwnMessage, currentUser }) => {
   const { socket } = useSocket();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [showReactions, setShowReactions] = useState(false);
@@ -33,30 +34,7 @@ export default function ChatMessage({ message, isOwnMessage }: ChatMessageProps)
     return <FileIcon />;
   };
 
-  const handleFileDownload = () => {
-    if (!message.attachment || !message.attachment.data || !message.attachment.name) {
-      toast.error('File data or name is missing');
-      return;
-    }
-    
-    try {
-      const link = document.createElement('a');
-      link.href = message.attachment.data;
-      link.download = message.attachment.name;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    } catch (error) {
-      console.error('Failed to download file:', error);
-      toast.error('Failed to download file');
-    }
-  };
-
   const handleReactionClick = (event: React.MouseEvent<HTMLElement>) => {
-    if (!socket) {
-      toast.error('Not connected to chat');
-      return;
-    }
     setAnchorEl(event.currentTarget);
     setShowReactions(true);
   };
@@ -66,27 +44,34 @@ export default function ChatMessage({ message, isOwnMessage }: ChatMessageProps)
     setShowReactions(false);
   };
 
-  const addReaction = (reaction: string) => {
-    if (!socket) {
-      toast.error('Not connected to chat');
-      return;
+  const handleReaction = (emoji: string) => {
+    if (socket) {
+      const hasReacted = message.reactions.findIndex(reaction => 
+        reaction.emoji === emoji && reaction.username === currentUser
+      ) !== -1;
+      socket.emit('messageReaction', {
+        messageId: message.id,
+        emoji,
+        type: hasReacted ? 'remove' : 'add'
+      });
+      handleReactionClose();
     }
-    socket.emit('add_reaction', {
-      messageId: message.id,
-      reaction,
-    });
-    handleReactionClose();
   };
 
-  const removeReaction = (reaction: string) => {
-    if (!socket) {
-      toast.error('Not connected to chat');
-      return;
-    }
-    socket.emit('remove_reaction', {
-      messageId: message.id,
-      reaction,
-    });
+  const getReactionCount = (emoji: string) => {
+    return message.reactions.filter(reaction => reaction.emoji === emoji).length;
+  };
+
+  const hasUserReacted = (emoji: string) => {
+    return message.reactions.some(reaction => 
+      reaction.emoji === emoji && reaction.username === currentUser
+    );
+  };
+
+  const getReactingUsers = (emoji: string) => {
+    return message.reactions
+      .filter(reaction => reaction.emoji === emoji)
+      .map(reaction => reaction.username);
   };
 
   const handleImageError = () => {
@@ -94,198 +79,197 @@ export default function ChatMessage({ message, isOwnMessage }: ChatMessageProps)
   };
 
   const renderReactionBadges = () => {
-    if (!message.reactions) return null;
-    return Object.entries(message.reactions).map(([emoji, users]) => (
+    const reactionGroups = message.reactions.reduce((acc, reaction) => {
+      if (!acc[reaction.emoji]) {
+        acc[reaction.emoji] = [];
+      }
+      acc[reaction.emoji].push(reaction.username);
+      return acc;
+    }, {} as Record<string, string[]>);
+
+    return Object.entries(reactionGroups).map(([emoji, users]) => (
       <Tooltip
         key={emoji}
         title={users.join(', ')}
-        placement="top"
         arrow
       >
         <Paper
-          onClick={() => {
-            if (!socket?.auth.username) return;
-            const hasReacted = users.includes(socket.auth.username);
-            if (hasReacted) {
-              removeReaction(emoji);
-            } else {
-              addReaction(emoji);
-            }
-          }}
+          onClick={() => handleReaction(emoji)}
           sx={{
-            px: 1,
-            py: 0.5,
-            cursor: 'pointer',
+            p: 0.5,
             display: 'flex',
             alignItems: 'center',
             gap: 0.5,
-            bgcolor: socket?.auth.username && users.includes(socket.auth.username) 
+            cursor: 'pointer',
+            bgcolor: hasUserReacted(emoji)
               ? 'primary.light' 
               : 'background.paper',
             '&:hover': {
-              bgcolor: socket?.auth.username && users.includes(socket.auth.username)
+              bgcolor: hasUserReacted(emoji)
                 ? 'primary.main'
                 : 'action.hover',
             },
-            color: socket?.auth.username && users.includes(socket.auth.username)
+            color: hasUserReacted(emoji)
               ? 'primary.contrastText'
               : 'text.primary',
           }}
         >
-          <span>{emoji}</span>
+          <Typography variant="body2">{emoji}</Typography>
           <Typography variant="caption">{users.length}</Typography>
         </Paper>
       </Tooltip>
     ));
   };
 
-  const renderAttachment = () => {
-    if (!message.attachment) return null;
-    
-    if (message.attachment.type.startsWith('image/')) {
-      return (
-        <Box
-          component="img"
-          src={message.attachment.data}
-          alt={message.attachment.name}
-          sx={{
-            maxWidth: '200px',
-            maxHeight: '200px',
-            borderRadius: 1,
-            mt: 1
-          }}
-        />
-      );
-    }
-
-    if (message.attachment.type.startsWith('video/')) {
-      return (
-        <Box
-          component="video"
-          controls
-          src={message.attachment.data}
-          sx={{
-            maxWidth: '200px',
-            maxHeight: '200px',
-            borderRadius: 1,
-            mt: 1
-          }}
-        />
-      );
-    }
-
-    return (
-      <Link
-        href={message.attachment.data}
-        download={message.attachment.name}
-        sx={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 1,
-          mt: 1,
-          textDecoration: 'none',
-          color: 'inherit'
-        }}
-      >
-        {getFileIcon()}
-        <Typography variant="body2">{message.attachment.name}</Typography>
-      </Link>
-    );
-  };
-
   return (
     <Box
       sx={{
         display: 'flex',
-        flexDirection: 'column',
-        alignItems: isOwnMessage ? 'flex-end' : 'flex-start',
+        flexDirection: isOwnMessage ? 'row-reverse' : 'row',
+        gap: 1,
         mb: 2,
+        maxWidth: '70%',
+        alignSelf: isOwnMessage ? 'flex-end' : 'flex-start',
       }}
     >
-      <Box sx={{ display: 'flex', alignItems: 'flex-end', gap: 1, mb: 0.5 }}>
-        {!isOwnMessage && (
-          <Avatar
-            sx={{
-              width: 32,
-              height: 32,
-              bgcolor: 'primary.main',
-              fontSize: '0.875rem',
-            }}
-          >
-            {message.username.charAt(0).toUpperCase()}
-          </Avatar>
-        )}
-        <Paper
-          elevation={1}
+      <Avatar sx={{ width: 32, height: 32 }}>
+        {message.username[0].toUpperCase()}
+      </Avatar>
+      <Box sx={{ maxWidth: 'calc(100% - 40px)' }}>
+        <Box
           sx={{
-            p: 1.5,
-            maxWidth: '70%',
-            bgcolor: isOwnMessage ? 'primary.main' : 'background.paper',
-            color: isOwnMessage ? 'primary.contrastText' : 'text.primary',
-            borderRadius: 2,
-            position: 'relative',
+            display: 'flex',
+            flexDirection: isOwnMessage ? 'row-reverse' : 'row',
+            alignItems: 'center',
+            gap: 1,
+            mb: 0.5,
           }}
         >
-          {!isOwnMessage && (
-            <Typography
-              variant="caption"
-              sx={{ color: 'text.secondary', display: 'block', mb: 0.5 }}
-            >
-              {message.username}
-            </Typography>
-          )}
-          <Typography variant="body1" sx={{ wordBreak: 'break-word' }}>
-            {message.text}
+          <Typography variant="subtitle2" color="text.secondary">
+            {message.username}
           </Typography>
-          {renderAttachment()}
-          <Typography
-            variant="caption"
-            sx={{
-              color: isOwnMessage ? 'primary.contrastText' : 'text.secondary',
-              opacity: 0.8,
-              display: 'block',
-              mt: 0.5,
-            }}
-          >
+          <Typography variant="caption" color="text.secondary">
             {format(message.timestamp, 'HH:mm')}
           </Typography>
-        </Paper>
-        <IconButton
-          size="small"
-          onClick={handleReactionClick}
+        </Box>
+        <Box
           sx={{
-            opacity: 0,
-            transition: 'opacity 0.2s',
-            '&:hover': { opacity: 1 },
-            '.MuiBox-root:hover &': { opacity: 0.5 },
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: isOwnMessage ? 'flex-end' : 'flex-start',
           }}
         >
-          <AddReactionIcon />
-        </IconButton>
-      </Box>
-      {message.reactions && Object.keys(message.reactions).length > 0 && (
-        <Box sx={{ display: 'flex', gap: 0.5, mt: 0.5, flexWrap: 'wrap' }}>
-          {renderReactionBadges()}
+          <Paper
+            elevation={1}
+            sx={{
+              p: 1.5,
+              bgcolor: isOwnMessage ? 'primary.main' : 'background.paper',
+              color: isOwnMessage ? 'primary.contrastText' : 'text.primary',
+              borderRadius: 2,
+              maxWidth: '100%',
+              wordBreak: 'break-word',
+            }}
+          >
+            <Typography variant="body1" component="div">
+              {message.content}
+            </Typography>
+            {message.attachment && (
+              <Box sx={{ mt: 1 }}>
+                {message.attachment.type.startsWith('image/') && !imageError ? (
+                  <Box
+                    sx={{
+                      position: 'relative',
+                      width: '100%',
+                      maxWidth: 300,
+                      height: 200,
+                      borderRadius: 1,
+                      overflow: 'hidden',
+                    }}
+                  >
+                    <Image
+                      src={message.attachment.data}
+                      alt={message.attachment.name}
+                      fill
+                      style={{ objectFit: 'contain' }}
+                      onError={handleImageError}
+                    />
+                  </Box>
+                ) : (
+                  <Link
+                    href={message.attachment.data}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 1,
+                      color: 'inherit',
+                      textDecoration: 'none',
+                      '&:hover': {
+                        textDecoration: 'underline',
+                      },
+                    }}
+                  >
+                    {getFileIcon()}
+                    <Typography variant="body2" sx={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {message.attachment.name}
+                    </Typography>
+                    <DownloadIcon />
+                  </Link>
+                )}
+              </Box>
+            )}
+          </Paper>
+          {message.reactions && message.reactions.length > 0 && (
+            <Box sx={{ display: 'flex', gap: 0.5, mt: 0.5, flexWrap: 'wrap' }}>
+              {renderReactionBadges()}
+            </Box>
+          )}
+          <IconButton
+            size="small"
+            onClick={handleReactionClick}
+            sx={{
+              mt: 0.5,
+              opacity: 0.6,
+              '&:hover': {
+                opacity: 1,
+              },
+            }}
+          >
+            <AddReactionIcon />
+          </IconButton>
         </Box>
-      )}
+      </Box>
       <Menu
         anchorEl={anchorEl}
         open={showReactions}
         onClose={handleReactionClose}
-        sx={{ '& .MuiPaper-root': { maxWidth: 320 } }}
+        anchorOrigin={{
+          vertical: 'bottom',
+          horizontal: 'right',
+        }}
+        transformOrigin={{
+          vertical: 'top',
+          horizontal: 'right',
+        }}
       >
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', p: 1, gap: 0.5 }}>
-          {QUICK_REACTIONS.map((emoji) => (
-            <IconButton
+        <Box sx={{ display: 'flex', p: 1, gap: 0.5 }}>
+          {REACTION_EMOJIS.map((emoji) => (
+            <MenuItem
               key={emoji}
-              size="small"
-              onClick={() => addReaction(emoji)}
+              onClick={() => handleReaction(emoji)}
+              sx={{
+                minWidth: 'auto',
+                p: 0.5,
+              }}
             >
-              <Typography>{emoji}</Typography>
-            </IconButton>
+              {emoji}
+            </MenuItem>
           ))}
         </Box>
       </Menu>
     </Box>
   );
-}
+};
+
+export default ChatMessage;

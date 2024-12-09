@@ -5,6 +5,7 @@ import { Box, TextField, IconButton, Tooltip, Typography } from '@mui/material';
 import { Send as SendIcon, AttachFile as AttachFileIcon } from '@mui/icons-material';
 import { motion } from 'framer-motion';
 import { useSocket } from '@/lib/socket/context';
+import toast from 'react-hot-toast'; // Assuming you have react-hot-toast installed
 
 interface ChatInputProps {
   privateChat?: boolean;
@@ -15,7 +16,7 @@ interface ChatInputProps {
 export default function ChatInput({ privateChat, recipient, onTyping }: ChatInputProps) {
   const [message, setMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
-  const { sendMessage } = useSocket();
+  const { socket } = useSocket();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout>();
 
@@ -36,13 +37,28 @@ export default function ChatInput({ privateChat, recipient, onTyping }: ChatInpu
   };
 
   const handleSend = () => {
-    if (message.trim()) {
-      if (privateChat && recipient) {
-        sendMessage(message.trim(), undefined, recipient);
-      } else {
-        sendMessage(message.trim());
-      }
+    if (!socket) {
+      toast.error('Socket connection lost. Please reconnect.');
+      return;
+    }
+
+    const trimmedMessage = message.trim();
+    if (!trimmedMessage) {
+      toast.error('Cannot send empty message');
+      return;
+    }
+
+    try {
+      socket.emit('message', {
+        content: trimmedMessage,
+        to: recipient
+      });
+      
+      // Clear input after successful send
       setMessage('');
+    } catch (error) {
+      console.error('Error sending message:', error);
+      toast.error('Failed to send message. Please try again.');
     }
   };
 
@@ -53,27 +69,27 @@ export default function ChatInput({ privateChat, recipient, onTyping }: ChatInpu
     }
   };
 
-  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
+  const handleFileSelect = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
       const reader = new FileReader();
       reader.onload = () => {
-        const base64 = reader.result as string;
-        if (privateChat && recipient) {
-          sendMessage('', {
+        const base64Data = reader.result as string;
+        socket?.emit('message', {
+          content: `Sent ${file.type.startsWith('image/') ? 'an image' : 'a file'}: ${file.name}`,
+          to: recipient,
+          attachment: {
             type: file.type,
             name: file.name,
-            data: base64
-          }, recipient);
-        } else {
-          sendMessage('', {
-            type: file.type,
-            name: file.name,
-            data: base64
-          });
-        }
+            data: base64Data
+          }
+        });
       };
       reader.readAsDataURL(file);
+    } catch (error) {
+      console.error('Error reading file:', error);
     }
   };
 
@@ -104,17 +120,17 @@ export default function ChatInput({ privateChat, recipient, onTyping }: ChatInpu
           Select a user to start private chat
         </Typography>
       )}
-      
+
       {(!privateChat || recipient) && (
         <>
           <input
             type="file"
             ref={fileInputRef}
-            onChange={handleFileChange}
+            onChange={handleFileSelect}
             style={{ display: 'none' }}
             accept="image/*,video/*,audio/*"
           />
-          
+
           <Tooltip title="Attach file">
             <IconButton
               onClick={() => fileInputRef.current?.click()}

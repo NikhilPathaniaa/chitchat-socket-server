@@ -10,7 +10,7 @@ import { toast } from 'react-hot-toast';
 
 export default function ChatPage() {
   const [username, setUsername] = useState('');
-  const { setUsername: setContextUsername, connect } = useSocket();
+  const { connect, setUsername: setContextUsername } = useSocket();
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -21,14 +21,59 @@ export default function ChatPage() {
       return;
     }
 
+    const trimmedUsername = username.trim();
+
     try {
-      setContextUsername(username.trim());
-      connect();
+      console.log('Attempting to connect with username:', trimmedUsername);
+      
+      // Set username in context BEFORE connecting
+      setContextUsername(trimmedUsername);
+      
+      // Start connection
+      const connectionResult = connect();
+      console.log('Initial connection result:', connectionResult);
+      
+      // Wait a bit to see if connection succeeds
+      const connectionCheck = await new Promise<boolean>((resolve, reject) => {
+        const checkTimeout = setTimeout(() => {
+          const socket = (window as any).socket;
+          console.log('Socket connection check:', {
+            connected: socket?.connected,
+            connectionResult,
+            socketExists: !!socket,
+            contextUsername: username
+          });
+          
+          if (socket?.connected) {
+            resolve(true);
+          } else {
+            reject(new Error('Failed to establish socket connection'));
+          }
+        }, 3000);
+
+        // If connection is successful, clear timeout and resolve
+        if (connectionResult) {
+          clearTimeout(checkTimeout);
+          resolve(true);
+        }
+      });
+      
+      console.log('Connection check result:', connectionCheck);
+      
+      // If we get here, auth was successful
       router.push('/chat/room');
       toast.success('Connected successfully!');
+      
     } catch (error) {
       console.error('Login error:', error);
-      toast.error('Failed to connect. Please try again.');
+      toast.error(error instanceof Error ? error.message : 'Failed to connect');
+      
+      // Clean up socket on error
+      const socket = (window as any).socket;
+      if (socket) {
+        socket.disconnect();
+        (window as any).socket = null;
+      }
     }
   };
 
@@ -115,23 +160,27 @@ export default function ChatPage() {
             onChange={(e) => setUsername(e.target.value)}
             sx={{
               '& .MuiOutlinedInput-root': {
-                '&:hover fieldset': {
-                  borderColor: 'primary.main',
+                '&.Mui-focused fieldset': {
+                  borderColor: '#6366f1',
                 },
+              },
+              '& .MuiInputLabel-root.Mui-focused': {
+                color: '#6366f1',
               },
             }}
           />
           <Button
             type="submit"
             variant="contained"
-            size="large"
+            fullWidth
             sx={{
-              background: 'linear-gradient(45deg, #6366f1, #8b5cf6)',
-              textTransform: 'none',
-              py: 1.5,
+              bgcolor: '#6366f1',
               '&:hover': {
-                background: 'linear-gradient(45deg, #4f46e5, #7c3aed)',
+                bgcolor: '#4f46e5',
               },
+              py: 1.5,
+              textTransform: 'none',
+              fontSize: '1rem',
             }}
           >
             Join Chat

@@ -5,6 +5,7 @@ const nextConfig = {
     domains: ['images.unsplash.com', 'unsplash.com']
   },
   pageExtensions: ['js', 'jsx', 'ts', 'tsx'],
+  output: 'standalone',
   webpack: (config, { isServer }) => {
     if (!isServer) {
       config.resolve.fallback = {

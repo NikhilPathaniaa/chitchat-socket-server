@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { useSocket } from '@/lib/socket/context';
+import { useSocket, type Message } from '@/lib/socket/context';
 import { Paper, Typography, Box, Tabs, Tab, List, ListItem, ListItemText, ListItemButton, Avatar, Badge } from '@mui/material';
 import { motion, AnimatePresence } from 'framer-motion';
 import ChatInput from '@/components/chat/ChatInput';
@@ -31,9 +31,11 @@ function TabPanel(props: TabPanelProps) {
 }
 
 const ChatPage = () => {
-  const { socket, messages, onlineUsers, username, selectedUser, selectUser } = useSocket();
+  const { socket, messages, onlineUsers, username, selectedUser, selectUser, ...rest } = useSocket();
   const [tabValue, setTabValue] = React.useState(0);
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
+
+  const typedOnlineUsers: string[] = onlineUsers || [];
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
@@ -69,9 +71,9 @@ const ChatPage = () => {
     );
   }
 
-  const publicMessages = messages.filter(m => !m.private);
+  const publicMessages = messages.filter(m => !m.to);
   const privateMessages = messages.filter(m => 
-    m.private && ((m.username === username && m.to === selectedUser) || 
+    m.to && ((m.username === username && m.to === selectedUser) || 
     (m.username === selectedUser && m.to === username))
   );
 
@@ -123,32 +125,16 @@ const ChatPage = () => {
           </TabPanel>
           <TabPanel value={tabValue} index={1}>
             <List>
-              {onlineUsers
-                .filter(user => user.username !== username)
-                .map((user) => (
-                  <ListItem key={user.username} disablePadding>
+              {typedOnlineUsers
+                .filter((user: string) => user !== username)
+                .map((user: string) => (
+                  <ListItem key={user} disablePadding>
                     <ListItemButton
-                      selected={selectedUser === user.username}
-                      onClick={() => selectUser(user.username)}
-                      sx={{
-                        borderRadius: 1,
-                        m: 0.5,
-                      }}
+                      selected={selectedUser === user}
+                      onClick={() => selectUser(user)}
                     >
-                      <Badge
-                        overlap="circular"
-                        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-                        variant="dot"
-                        color="success"
-                      >
-                        <Avatar sx={{ width: 32, height: 32, mr: 1 }}>
-                          {user.username[0].toUpperCase()}
-                        </Avatar>
-                      </Badge>
-                      <ListItemText 
-                        primary={user.username}
-                        secondary={`Last seen ${new Date(user.lastSeen).toLocaleTimeString()}`}
-                      />
+                      <Avatar sx={{ mr: 2 }}>{user.charAt(0).toUpperCase()}</Avatar>
+                      <ListItemText primary={user} />
                     </ListItemButton>
                   </ListItem>
                 ))}
@@ -181,6 +167,7 @@ const ChatPage = () => {
                 key={message.id}
                 message={message}
                 isOwnMessage={message.username === username}
+                currentUser={username}
               />
             ))}
           </AnimatePresence>

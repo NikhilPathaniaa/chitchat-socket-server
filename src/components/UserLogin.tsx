@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { Box, Button, TextField, Typography, Paper } from '@mui/material';
 import { useSocket } from '@/lib/socket/context';
 import toast from 'react-hot-toast';
-import Cookies from 'js-cookie';
 
 export default function UserLogin() {
   const [username, setUsername] = useState('');
@@ -16,15 +15,18 @@ export default function UserLogin() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setIsLoading(true);
     
     if (!username.trim()) {
       setError('Username is required');
+      setIsLoading(false);
       return;
     }
     
     try {
       setError('');
-      setUsername(username.trim());
+      const trimmedUsername = username.trim();
+      setUsername(trimmedUsername);
       connect();
       router.push('/chat/room');
       toast.success('Connected successfully!');
@@ -32,6 +34,8 @@ export default function UserLogin() {
       console.error('Login error:', error);
       setError('Failed to connect. Please try again.');
       toast.error('Connection failed!');
+    } finally {
+      setIsLoading(false);
     }
   };
 

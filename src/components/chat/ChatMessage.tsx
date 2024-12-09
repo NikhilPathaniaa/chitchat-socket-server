@@ -1,570 +1,351 @@
-'use client';
-
-import React, { useState, useRef, useEffect } from 'react';
-import { Box, Typography, Avatar, Paper, Modal, IconButton, Fade } from '@mui/material';
+import React, { useState, useEffect } from 'react';
+import { 
+  Box, 
+  Typography, 
+  IconButton, 
+  Tooltip,
+  useTheme,
+  styled,
+  darken,
+  lighten
+} from '@mui/material';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useSocket } from '@/lib/socket/context';
-import { getRelativeTime } from '@/utils/timeUtils';
-import CloseIcon from '@mui/icons-material/Close';
-import ZoomInIcon from '@mui/icons-material/ZoomIn';
+import { formatDistance } from 'date-fns';
+import toast from 'react-hot-toast'; // Import react-hot-toast
+
+import { Message } from '@/lib/socket/context';
+import { useSocketContext } from '@/lib/socket/context';
+
+const EMOJI_LIST = ['👍', '❤️', '😂', '😮', '😢'];
+
+// Styled Message Bubble Component
+const MessageBubble = styled(Box, { 
+  shouldForwardProp: (prop) => prop !== 'isOwnMessage' 
+})<{ isOwnMessage?: boolean }>(({ theme, isOwnMessage }) => ({
+  maxWidth: '90%',
+  width: 'auto',
+  padding: theme.spacing(1.5),
+  borderRadius: theme.spacing(2),
+  position: 'relative',
+  display: 'inline-flex',
+  wordBreak: 'break-word',
+  overflowWrap: 'break-word',
+  alignItems: 'center',
+  justifyContent: 'flex-start',
+  gap: theme.spacing(1),
+  ...(isOwnMessage 
+    ? {
+        backgroundColor: theme.palette.primary.light,
+        color: theme.palette.primary.contrastText,
+        borderBottomRightRadius: theme.spacing(1),
+        boxShadow: `0 4px 6px ${lighten(theme.palette.primary.light, 0.3)}`
+      }
+    : {
+        backgroundColor: theme.palette.grey[200],
+        color: theme.palette.text.primary,
+        borderBottomLeftRadius: theme.spacing(1),
+        boxShadow: `0 4px 6px ${lighten(theme.palette.grey[300], 0.3)}`
+      }
+  ),
+  '&::before': {
+    content: '""',
+    position: 'absolute',
+    bottom: 0,
+    ...(isOwnMessage 
+      ? { right: `-${theme.spacing(2)}` } 
+      : { left: `-${theme.spacing(2)}` }
+    ),
+    width: 0,
+    height: 0,
+    borderStyle: 'solid',
+    borderWidth: `0 0 ${theme.spacing(2)} ${theme.spacing(2)}`,
+    ...(isOwnMessage 
+      ? {
+          borderColor: `transparent transparent ${theme.palette.primary.light} transparent`
+        }
+      : {
+          borderColor: `transparent transparent ${theme.palette.grey[200]} transparent`
+        }
+    )
+  }
+}));
+
+const EmojiButton = styled(IconButton)(({ theme }) => ({
+  transition: theme.transitions.create(['transform', 'background-color'], {
+    duration: theme.transitions.duration.short,
+  }),
+  '&:hover': {
+    transform: 'scale(1.2)',
+    backgroundColor: theme.palette.action.hover,
+  },
+  '&:active': {
+    transform: 'scale(0.9)',
+  }
+}));
+
+const messageVariants = {
+  hidden: { opacity: 0, scale: 0.9, x: -50 },
+  visible: { 
+    opacity: 1, 
+    scale: 1,
+    x: 0,
+    transition: { 
+      type: 'spring', 
+      stiffness: 300, 
+      damping: 20 
+    } 
+  },
+  exit: { 
+    opacity: 0, 
+    scale: 0.9,
+    x: 50,
+    transition: { duration: 0.2 } 
+  }
+};
 
 interface ChatMessageProps {
-  message: {
-    id: string;
-    text: string;
-    username: string;
-    timestamp: number;
-    reactions: { [key: string]: string[] };
-    private?: boolean;
-    to?: string;
-    attachment?: {
-      type: string;
-      name: string;
-      data: string;
-    };
-  };
+  message: Message;
   isOwnMessage: boolean;
+  currentUser: string;
 }
 
-const REACTION_HOVER_DELAY = 500; // ms
-
-const ChatMessage: React.FC<ChatMessageProps> = ({ message, isOwnMessage }) => {
-  const { sendReaction, socket } = useSocket();
-  const [showReactions, setShowReactions] = useState(false);
-  const [mediaError, setMediaError] = useState(false);
-  const [openModal, setOpenModal] = useState(false);
-  const messageRef = useRef<HTMLDivElement>(null);
-  const reactionPanelRef = useRef<HTMLDivElement>(null);
-  const hoverTimer = useRef<NodeJS.Timeout>();
-  const videoRef = useRef<HTMLVideoElement>(null);
+const ChatMessage: React.FC<ChatMessageProps> = ({ message, isOwnMessage, currentUser }) => {
+  const [hoveredMessage, setHoveredMessage] = useState(false);
+  const { socket, messages, setMessages, username } = useSocketContext();
+  const theme = useTheme();
 
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        reactionPanelRef.current &&
-        !reactionPanelRef.current.contains(event.target as Node) &&
-        messageRef.current &&
-        !messageRef.current.contains(event.target as Node)
-      ) {
-        setShowReactions(false);
-      }
-    };
+    console.log('ChatMessage Component - Full Message Object:', {
+      id: message.id,
+      content: message.content,
+      reactions: message.reactions,
+      timestamp: message.timestamp,
+      username: message.username
+    });
+  }, [message]);
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, []);
+  useEffect(() => {
+    console.log('ChatMessage: Reaction State Changed', {
+      messageId: message.id,
+      reactions: message.reactions,
+      reactionsLength: message.reactions?.length,
+      messageContent: message.content
+    });
+  }, [message.reactions]);
 
-  const handleMouseEnter = () => {
-    if (hoverTimer.current) {
-      clearTimeout(hoverTimer.current);
-    }
-    hoverTimer.current = setTimeout(() => {
-      setShowReactions(true);
-    }, REACTION_HOVER_DELAY);
+  const formatDetailedTime = (timestamp: number) => {
+    const diff = Date.now() - timestamp;
+    const minutes = Math.floor(diff / (1000 * 60));
+    const hours = Math.floor(minutes / 60);
+
+    if (hours > 0) return `${hours} hr ago`;
+    return `${minutes} min ago`;
   };
 
-  const handleMouseLeave = (e: React.MouseEvent) => {
-    if (hoverTimer.current) {
-      clearTimeout(hoverTimer.current);
-    }
-    
-    // Don't hide if moving to reaction panel
-    const rect = reactionPanelRef.current?.getBoundingClientRect();
-    if (rect) {
-      const { clientX, clientY } = e;
-      if (
-        clientX >= rect.left &&
-        clientX <= rect.right &&
-        clientY >= rect.top &&
-        clientY <= rect.bottom
-      ) {
-        return;
-      }
-    }
-    
-    setShowReactions(false);
-  };
+  const renderReactionPanel = () => {
+    console.log('Rendering Reaction Panel - Detailed', {
+      messageId: message.id,
+      messageContent: message.content,
+      reactions: message.reactions,
+      reactionsLength: message.reactions?.length,
+      hasReactions: message.reactions && message.reactions.length > 0
+    });
 
-  const handleReaction = (emoji: string) => {
-    sendReaction(message.id, emoji);
-  };
+    // Force reactions to be an array if undefined
+    const safeReactions = message.reactions || [];
 
-  const handleMediaClick = () => {
-    setOpenModal(true);
-  };
-
-  const handleCloseModal = () => {
-    setOpenModal(false);
-  };
-
-  const isImage = message.attachment?.type?.startsWith('image/');
-  const isVideo = message.attachment?.type?.startsWith('video/');
-
-  const renderMedia = () => {
-    if (!message.attachment || mediaError) return null;
-
-    if (isImage) {
-      return (
-        <>
-          <Box
-            sx={{
-              position: 'relative',
-              width: '100%',
-              maxWidth: { xs: '100%', sm: 300 },
-              borderRadius: 2,
-              overflow: 'hidden',
-              mb: message.text ? 1 : 0,
-              cursor: 'pointer',
-              '&:hover .zoom-overlay': {
-                opacity: 1,
-              },
-            }}
-            onClick={handleMediaClick}
-          >
-            <img
-              src={message.attachment.data}
-              alt={message.attachment.name}
-              style={{ 
-                width: '100%',
-                height: 'auto',
-                maxHeight: '300px',
-                objectFit: 'contain',
-                backgroundColor: 'rgba(0,0,0,0.03)',
-                borderRadius: '8px'
-              }}
-              onError={() => setMediaError(true)}
-            />
-            <Box
-              className="zoom-overlay"
-              sx={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                bgcolor: 'rgba(0,0,0,0.3)',
-                opacity: 0,
-                transition: 'opacity 0.2s',
-              }}
-            >
-              <ZoomInIcon sx={{ color: 'white', fontSize: '2rem' }} />
-            </Box>
-          </Box>
-
-          <Modal
-            open={openModal}
-            onClose={handleCloseModal}
-            closeAfterTransition
-            sx={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              p: 2,
-            }}
-          >
-            <Fade in={openModal}>
-              <Box
-                sx={{
-                  position: 'relative',
-                  maxWidth: '90vw',
-                  maxHeight: '90vh',
-                  bgcolor: 'background.paper',
-                  borderRadius: 2,
-                  boxShadow: 24,
-                  p: 1,
-                }}
-              >
-                <IconButton
-                  onClick={handleCloseModal}
-                  sx={{
-                    position: 'absolute',
-                    right: 8,
-                    top: 8,
-                    bgcolor: 'rgba(0,0,0,0.4)',
-                    color: 'white',
-                    '&:hover': {
-                      bgcolor: 'rgba(0,0,0,0.6)',
-                    },
-                    zIndex: 1,
-                  }}
-                >
-                  <CloseIcon />
-                </IconButton>
-                <img
-                  src={message.attachment.data}
-                  alt={message.attachment.name}
-                  style={{ 
-                    maxWidth: '100%',
-                    maxHeight: '80vh',
-                    objectFit: 'contain'
-                  }}
-                />
-              </Box>
-            </Fade>
-          </Modal>
-        </>
-      );
+    if (safeReactions.length === 0) {
+      console.log('No reactions to render for message', message.id);
+      return null;
     }
 
-    if (isVideo) {
-      return (
-        <>
-          <Box
-            sx={{
-              width: '100%',
-              maxWidth: { xs: '100%', sm: 300 },
-              borderRadius: 2,
-              overflow: 'hidden',
-              mb: message.text ? 1 : 0,
-              cursor: 'pointer',
-              position: 'relative',
-              '&:hover .zoom-overlay': {
-                opacity: 1,
-              },
-            }}
-            onClick={handleMediaClick}
-          >
-            <video
-              ref={videoRef}
-              style={{ 
-                width: '100%',
-                height: 'auto',
-                maxHeight: '300px',
-                borderRadius: '8px',
-                backgroundColor: 'rgba(0,0,0,0.03)',
-                objectFit: 'contain'
-              }}
-              onError={() => setMediaError(true)}
-            >
-              <source src={message.attachment.data} type={message.attachment.type} />
-              Your browser does not support the video tag.
-            </video>
-            <Box
-              className="zoom-overlay"
-              sx={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                bgcolor: 'rgba(0,0,0,0.3)',
-                opacity: 0,
-                transition: 'opacity 0.2s',
-              }}
-            >
-              <ZoomInIcon sx={{ color: 'white', fontSize: '2rem' }} />
-            </Box>
-          </Box>
+    const reactionCounts = safeReactions.reduce((acc, reaction) => {
+      acc[reaction.emoji] = (acc[reaction.emoji] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
 
-          <Modal
-            open={openModal}
-            onClose={handleCloseModal}
-            closeAfterTransition
-            sx={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              p: 2,
-            }}
-          >
-            <Fade in={openModal}>
-              <Box
-                sx={{
-                  position: 'relative',
-                  maxWidth: '90vw',
-                  maxHeight: '90vh',
-                  bgcolor: 'background.paper',
-                  borderRadius: 2,
-                  boxShadow: 24,
-                  p: 1,
-                }}
-              >
-                <IconButton
-                  onClick={handleCloseModal}
-                  sx={{
-                    position: 'absolute',
-                    right: 8,
-                    top: 8,
-                    bgcolor: 'rgba(0,0,0,0.4)',
-                    color: 'white',
-                    '&:hover': {
-                      bgcolor: 'rgba(0,0,0,0.6)',
-                    },
-                    zIndex: 1,
-                  }}
-                >
-                  <CloseIcon />
-                </IconButton>
-                <video
-                  controls
-                  autoPlay
-                  style={{ 
-                    maxWidth: '100%',
-                    maxHeight: '80vh',
-                    borderRadius: '8px'
-                  }}
-                >
-                  <source src={message.attachment.data} type={message.attachment.type} />
-                  Your browser does not support the video tag.
-                </video>
-              </Box>
-            </Fade>
-          </Modal>
-        </>
-      );
-    }
+    console.log('Reaction Counts Breakdown', {
+      messageId: message.id,
+      reactionCounts,
+      reactionDetails: safeReactions
+    });
 
     return (
-      <Box
+      <Box 
         sx={{
-          mt: message.text ? 1 : 0,
-          p: 1,
-          bgcolor: 'action.hover',
-          borderRadius: 1,
           display: 'flex',
+          justifyContent: 'center',
           alignItems: 'center',
-          gap: 1,
+          gap: theme.spacing(1),
+          backgroundColor: theme.palette.background.paper,
+          borderRadius: theme.spacing(2),
+          padding: theme.spacing(0.5),
+          boxShadow: theme.shadows[1],
+          alignSelf: isOwnMessage ? 'flex-end' : 'flex-start',
+          maxWidth: '90%',
         }}
       >
-        <Typography variant="body2" sx={{ wordBreak: 'break-word' }}>
-          📎 {message.attachment.name}
-        </Typography>
+        {Object.entries(reactionCounts).map(([emoji, count]) => (
+          <Tooltip key={emoji} title={`${count} reaction${count > 1 ? 's' : ''}`}>
+            <Typography variant="caption" sx={{ display: 'flex', alignItems: 'center' }}>
+              {emoji} {count > 1 && count}
+            </Typography>
+          </Tooltip>
+        ))}
       </Box>
     );
   };
 
-  const hasUserReacted = (emoji: string) => {
-    return message.reactions[emoji]?.includes(socket?.auth.username || '') || false;
+  const handleReactionClick = (emoji: string) => {
+    console.log('Reaction Click - Detailed', { 
+      messageId: message.id, 
+      emoji, 
+      messageContent: message.content,
+      currentReactions: message.reactions
+    });
+
+    // Fallback to localStorage if username is not available
+    const currentUsername = username;
+
+    if (!socket || !currentUsername) {
+      console.error('Reaction Failed - Detailed', {
+        socketAvailable: !!socket,
+        username: currentUsername,
+        messageId: message.id
+      });
+      toast.error('Unable to add reaction. Please log in again.');
+      return;
+    }
+
+    try {
+      // Optimistic update for better UX
+      const currentReactions = message.reactions || [];
+      const existingReactionIndex = currentReactions.findIndex(
+        r => r.emoji === emoji && r.username === currentUsername
+      );
+
+      let updatedReactions;
+      if (existingReactionIndex !== -1) {
+        // Remove existing reaction
+        updatedReactions = currentReactions.filter(
+          (_, index) => index !== existingReactionIndex
+        );
+      } else {
+        // Add new reaction
+        updatedReactions = [
+          ...currentReactions, 
+          { emoji, username: currentUsername }
+        ];
+      }
+
+      console.log('Reaction Update - Optimistic', {
+        messageId: message.id,
+        emoji,
+        username: currentUsername,
+        currentReactions,
+        updatedReactions
+      });
+
+      // Update messages in socket context
+      setMessages(prevMessages => 
+        prevMessages.map(msg => 
+          msg.id === message.id 
+            ? { ...msg, reactions: updatedReactions } 
+            : msg
+        )
+      );
+
+      // Emit reaction event
+      socket.emit('add_reaction', {
+        messageId: message.id,
+        emoji,
+        username: currentUsername,
+      });
+    } catch (error) {
+      console.error('Reaction Error - Detailed', {
+        messageId: message.id,
+        emoji,
+        username: currentUsername,
+        error: error instanceof Error ? error.message : error
+      });
+      toast.error('Failed to add reaction. Please try again.');
+    }
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-      transition={{ duration: 0.3 }}
+    <Box 
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: isOwnMessage ? 'flex-end' : 'flex-start',
+        width: '100%',
+        marginBottom: theme.spacing(2),
+        px: theme.spacing(2),
+      }}
+      onMouseEnter={() => setHoveredMessage(true)}
+      onMouseLeave={() => setHoveredMessage(false)}
     >
-      <Box
-        sx={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: isOwnMessage ? 'flex-end' : 'flex-start',
-          mb: 2,
-          mx: 2,
-          maxWidth: { xs: '85%', sm: '70%' },
+      {renderReactionPanel()}
+
+      <MessageBubble isOwnMessage={isOwnMessage}>
+        <Typography variant="body2">{message.content}</Typography>
+      </MessageBubble>
+
+      <Typography 
+        variant="caption" 
+        color="text.secondary" 
+        sx={{ 
+          marginTop: theme.spacing(0.5),
+          alignSelf: isOwnMessage ? 'flex-end' : 'flex-start',
         }}
       >
-        <Box
-          sx={{
-            display: 'flex',
-            flexDirection: isOwnMessage ? 'row-reverse' : 'row',
-            alignItems: 'flex-end',
-            gap: 1,
-            position: 'relative',
-          }}
-        >
-          {!isOwnMessage && (
-            <Avatar
-              sx={{
-                width: 32,
-                height: 32,
-                bgcolor: theme => theme.palette.primary.main,
-                fontSize: '1rem',
-              }}
-            >
-              {message.username[0].toUpperCase()}
-            </Avatar>
-          )}
+        {formatDetailedTime(message.timestamp)}
+      </Typography>
 
-          <Box sx={{ position: 'relative' }} ref={messageRef}>
-            {!isOwnMessage && (
-              <Typography
-                variant="caption"
-                sx={{
-                  ml: 1.5,
-                  mb: 0.5,
-                  color: 'text.secondary',
-                  fontWeight: 500,
-                  display: 'block',
-                }}
+      <AnimatePresence>
+        {hoveredMessage && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 10 }}
+            transition={{ 
+              type: "spring", 
+              stiffness: 300, 
+              damping: 20 
+            }}
+            style={{ 
+              display: 'flex', 
+              gap: theme.spacing(0.5),
+              marginTop: theme.spacing(0.5),
+              alignSelf: isOwnMessage ? 'flex-end' : 'flex-start',
+              zIndex: 10 
+            }}
+          >
+            {EMOJI_LIST.map((emoji) => (
+              <motion.div
+                key={emoji}
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
               >
-                {message.username}
-              </Typography>
-            )}
-
-            <Box
-              onMouseEnter={handleMouseEnter}
-              onMouseLeave={handleMouseLeave}
-              sx={{
-                bgcolor: isOwnMessage ? 'primary.main' : 'background.paper',
-                color: isOwnMessage ? 'primary.contrastText' : 'text.primary',
-                position: 'relative',
-                maxWidth: '100%',
-                p: 1.5,
-                borderRadius: isOwnMessage ? '20px 20px 4px 20px' : '20px 20px 20px 4px',
-                boxShadow: theme => 
-                  isOwnMessage 
-                    ? `0 2px 12px ${theme.palette.primary.main}40`
-                    : '0 2px 12px rgba(0, 0, 0, 0.08)',
-                backdropFilter: 'blur(10px)',
-                minWidth: message.text ? '60px' : 'auto',
-                display: 'flex',
-                flexDirection: 'row',
-                alignItems: 'flex-end',
-                gap: 1,
-                '&::before': {
-                  content: '""',
-                  position: 'absolute',
-                  bottom: 0,
-                  [isOwnMessage ? 'right' : 'left']: -10,
-                  width: 20,
-                  height: 20,
-                  bgcolor: 'inherit',
-                  clipPath: isOwnMessage 
-                    ? 'polygon(0 0, 100% 0, 100% 100%)'
-                    : 'polygon(0 0, 100% 0, 0 100%)',
-                },
-              }}
-            >
-              {renderMedia()}
-              {message.text && (
-                <Typography
-                  variant="body1"
+                <IconButton 
+                  onClick={() => handleReactionClick(emoji)}
                   sx={{
-                    wordBreak: 'break-word',
-                    whiteSpace: 'pre-wrap',
+                    fontSize: '1rem',
+                    padding: theme.spacing(0.5),
+                    backgroundColor: theme.palette.background.paper,
+                    '&:hover': {
+                      backgroundColor: theme.palette.action.hover,
+                    },
                   }}
                 >
-                  {message.text}
-                </Typography>
-              )}
-            </Box>
-
-            <AnimatePresence>
-              {showReactions && (
-                <motion.div
-                  ref={reactionPanelRef}
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.8 }}
-                  transition={{ duration: 0.2 }}
-                  onMouseEnter={() => setShowReactions(true)}
-                  onMouseLeave={() => setShowReactions(false)}
-                  style={{
-                    position: 'absolute',
-                    top: -45,
-                    [isOwnMessage ? 'right' : 'left']: 0,
-                    zIndex: 1,
-                  }}
-                >
-                  <Paper
-                    elevation={3}
-                    sx={{
-                      display: 'flex',
-                      p: 0.5,
-                      borderRadius: 3,
-                      gap: 0.5,
-                      bgcolor: 'background.paper',
-                    }}
-                  >
-                    {['👍', '❤️', '😊', '😂', '😮'].map(emoji => (
-                      <Box
-                        key={emoji}
-                        onClick={() => handleReaction(emoji)}
-                        sx={{
-                          cursor: 'pointer',
-                          p: 0.5,
-                          borderRadius: 1,
-                          transition: 'all 0.2s',
-                          bgcolor: hasUserReacted(emoji) ? 'action.selected' : 'transparent',
-                          '&:hover': {
-                            bgcolor: 'action.hover',
-                            transform: 'scale(1.1)',
-                          },
-                        }}
-                      >
-                        {emoji}
-                      </Box>
-                    ))}
-                  </Paper>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            {Object.keys(message.reactions).length > 0 && (
-              <Box
-                sx={{
-                  display: 'flex',
-                  flexWrap: 'wrap',
-                  gap: 0.5,
-                  mt: 0.5,
-                  justifyContent: isOwnMessage ? 'flex-end' : 'flex-start',
-                  position: 'absolute',
-                  bottom: -24,
-                  [isOwnMessage ? 'right' : 'left']: 0,
-                  minWidth: '100%',
-                  maxWidth: 'none',
-                  width: 'auto',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                <Box
-                  sx={{
-                    display: 'flex',
-                    gap: 0.5,
-                    flexWrap: 'nowrap',
-                  }}
-                >
-                  {Object.entries(message.reactions).map(([emoji, users]) => (
-                    <Box
-                      key={`${message.id}-${emoji}`}
-                      onClick={() => handleReaction(emoji)}
-                      sx={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 0.5,
-                        bgcolor: hasUserReacted(emoji) ? 'action.selected' : 'action.hover',
-                        borderRadius: 4,
-                        px: 1,
-                        py: 0.25,
-                        fontSize: '0.875rem',
-                        cursor: 'pointer',
-                        '&:hover': {
-                          bgcolor: 'action.selected',
-                        },
-                      }}
-                    >
-                      <span>{emoji}</span>
-                      <span>{users.length}</span>
-                    </Box>
-                  ))}
-                </Box>
-              </Box>
-            )}
-          </Box>
-        </Box>
-
-        <Typography
-          variant="caption"
-          sx={{
-            color: 'text.secondary',
-            mt: Object.keys(message.reactions).length > 0 ? 3 : 0.5,
-            [isOwnMessage ? 'mr' : 'ml']: 1.5,
-            fontSize: '0.75rem',
-          }}
-        >
-          {getRelativeTime(message.timestamp)}
-        </Typography>
-      </Box>
-    </motion.div>
+                  {emoji}
+                </IconButton>
+              </motion.div>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </Box>
   );
 };
 
