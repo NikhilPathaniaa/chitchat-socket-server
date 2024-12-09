@@ -5,7 +5,11 @@ const nextConfig = {
     domains: ['images.unsplash.com', 'unsplash.com']
   },
   pageExtensions: ['js', 'jsx', 'ts', 'tsx'],
-  output: 'standalone',
+  output: 'standalone', 
+  experimental: {
+    outputFileTracingRoot: '.',
+    serverComponentsExternalPackages: ['mongoose']
+  },
   webpack: (config, { isServer }) => {
     if (!isServer) {
       config.resolve.fallback = {
