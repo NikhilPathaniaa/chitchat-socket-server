@@ -20,7 +20,20 @@ const nextConfig = {
         tls: false
       };
     }
+    
+    // Add explicit handling for client reference manifests
+    config.optimization.moduleIds = 'named';
+    
     return config;
+  },
+  // Ensure all routes are handled
+  async rewrites() {
+    return [
+      {
+        source: '/(.*)',
+        destination: '/',
+      },
+    ];
   }
 };
 
