@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
 const path = require('path');
+const { URL } = require('url');
 
 const nextConfig = {
   reactStrictMode: true,
