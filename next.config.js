@@ -7,11 +7,9 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true
   },
-  output: 'standalone',
   experimental: {
-    serverActions: {
-      bodySizeLimit: '2mb'
-    }
+    appDir: true,
+    serverComponentsExternalPackages: ['next']
   },
   images: {
     domains: ['images.unsplash.com', 'unsplash.com']
