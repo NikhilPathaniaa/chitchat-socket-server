@@ -5,5 +5,10 @@
   "env": {
     "NEXT_PUBLIC_SOCKET_URL": "https://chitchat-socket-server.onrender.com",
     "NODE_VERSION": "18.x"
+  },
+  "build": {
+    "env": {
+      "NODE_VERSION": "18.x"
+    }
   }
 }

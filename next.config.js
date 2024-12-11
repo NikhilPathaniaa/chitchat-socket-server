@@ -4,10 +4,6 @@ const { URL } = require('url');
 
 const nextConfig = {
   reactStrictMode: true,
-  experimental: {
-    appDir: true,
-    serverComponentsExternalPackages: ['some-package'] // Adjust as necessary
-  },
   typescript: {
     ignoreBuildErrors: true
   },
@@ -17,7 +13,6 @@ const nextConfig = {
   webpack: (config, { isServer }) => {
     if (!isServer) {
       config.resolve.fallback = {
-        ...config.resolve.fallback,
         fs: false,
         net: false,
         tls: false
