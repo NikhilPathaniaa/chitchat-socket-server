@@ -13,7 +13,7 @@ function broadcastOnlineUsers(io) {
 function initSocket(httpServer) {
     const io = new socket_io_1.Server(httpServer, {
         cors: {
-            origin: ['http://localhost:3000', 'http://localhost:3001'],
+            origin: ['https://chitchat-socket-server.onrender.com', 'http://localhost:3000', 'http://localhost:3001'],
             methods: ['GET', 'POST'],
             credentials: true,
             allowedHeaders: ['authorization', 'content-type']

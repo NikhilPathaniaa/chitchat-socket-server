@@ -1,25 +1,25 @@
 /** @type {import('next').NextConfig} */
+const path = require('path');
+const { URL } = require('url');
+
 const nextConfig = {
   reactStrictMode: true,
-  images: {
-    domains: ['images.unsplash.com', 'unsplash.com']
+  typescript: {
+    ignoreBuildErrors: true
   },
-  pageExtensions: ['js', 'jsx', 'ts', 'tsx'],
-  output: 'standalone', 
-  experimental: {
-    outputFileTracingRoot: '.',
-    serverComponentsExternalPackages: ['mongoose'],
-    appDir: true
+  images: {
+    domains: ['example.com'], // Replace with your actual image domains
   },
   webpack: (config, { isServer }) => {
+    console.log('Webpack configuration:', config); // Logging the webpack config
     if (!isServer) {
       config.resolve.fallback = {
-        ...config.resolve.fallback,
         fs: false,
         net: false,
         tls: false
       };
     }
+    // Custom webpack configurations if needed
     return config;
   }
 };
