@@ -7,9 +7,10 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true
   },
+  output: 'standalone',
   experimental: {
     serverActions: {
-      allowedOrigins: ['localhost:3000', 'chitchat-socket-server.onrender.com']
+      bodySizeLimit: '2mb'
     }
   },
   images: {
