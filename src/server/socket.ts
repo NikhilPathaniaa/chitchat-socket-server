@@ -44,7 +44,7 @@ function broadcastOnlineUsers(io: Server) {
 export function initSocket(httpServer: HTTPServer) {
   const io = new Server(httpServer, {
     cors: {
-      origin: ['http://localhost:3000', 'http://localhost:3001'],
+      origin: ['https://chitchat-socket-server.onrender.com', 'http://localhost:3000', 'http://localhost:3001'],
       methods: ['GET', 'POST'],
       credentials: true,
       allowedHeaders: ['authorization', 'content-type']

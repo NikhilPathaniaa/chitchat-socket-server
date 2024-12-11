@@ -1,4 +1,6 @@
-export const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3001';
+export const SOCKET_URL = process.env.NODE_ENV === 'production' 
+  ? 'wss://chitchat-socket-server.onrender.com'
+  : 'ws://localhost:3001';
 
 export const SOCKET_CONFIG = {
   reconnection: true,

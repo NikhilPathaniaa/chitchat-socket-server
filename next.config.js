@@ -11,9 +11,6 @@ const nextConfig = {
   images: {
     domains: ['images.unsplash.com', 'unsplash.com']
   },
-  experimental: {
-    serverComponentsExternalPackages: ['mongoose', 'socket.io', 'express']
-  },
   webpack: (config, { isServer }) => {
     if (!isServer) {
       config.resolve.fallback = {
