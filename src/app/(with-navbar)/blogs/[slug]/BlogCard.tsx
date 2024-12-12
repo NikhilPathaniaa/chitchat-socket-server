@@ -26,7 +26,16 @@ export default function BlogCard({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay: index * 0.1 }}
-      className="group relative bg-white rounded-2xl shadow-sm hover:shadow-lg transition-all duration-300"
+      style={{
+        position: 'relative',
+        backgroundColor: 'white',
+        borderRadius: '1rem',
+        boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+        transition: 'all 300ms'
+      }}
+      whileHover={{
+        boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)'
+      }}
     >
       <Link href={`/blogs/${slug}`} className="block">
         {/* Image Container */}
