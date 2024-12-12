@@ -10,8 +10,8 @@ interface LayoutProps {
   children: React.ReactNode;
 }
 
-export async function generateMetadata(params: Promise<{ slug: string }>): Promise<Metadata> {
-  const { slug } = await params;
+export async function generateMetadata({ params }: LayoutProps): Promise<Metadata> {
+  const { slug } = params;
   const post: BlogPost | null = await getPostBySlug(slug);
   
   if (!post) {
