@@ -3,13 +3,17 @@ import { getPostBySlug, getAllSlugs, type BlogPost } from '@/lib/blog';
 import Script from 'next/script';
 import './styles.css';
 
+type Params = {
+  slug: string;
+}
+
 type Props = {
-  params: { slug: string };
+  params: Promise<Params>;
   children: React.ReactNode;
 }
 
-export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
-  const { slug } = params;
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { slug } = await params;
   const post: BlogPost | null = await getPostBySlug(slug);
   
   if (!post) {
@@ -32,11 +36,12 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   };
 }
 
-export function generateStaticParams() {
-  const slugs = getAllSlugs();
+export async function generateStaticParams() {
+  const slugs = await getAllSlugs();
   return slugs.map((slug) => ({ slug }));
 }
 
-export default function BlogLayout({ children, params }: Props) {
+export default async function BlogLayout({ children, params }: Props) {
+  const { slug } = await params;
   return <>{children}</>;
 }
