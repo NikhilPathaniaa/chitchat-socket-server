@@ -22,53 +22,45 @@ export default function BlogCard({
   index,
 }: BlogCardProps) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, delay: index * 0.1 }}
-      style={{
-        position: 'relative',
-        backgroundColor: 'white',
-        borderRadius: '1rem',
-        boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
-        transition: 'all 300ms'
-      }}
-      whileHover={{
-        boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)'
-      }}
-    >
-      <Link href={`/blogs/${slug}`} className="block">
-        {/* Image Container */}
-        <div className="relative aspect-[16/9] rounded-t-2xl overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-gray-100 to-gray-200 shimmer" />
-        </div>
-
-        {/* Content */}
-        <div className="p-6">
-          {/* Category */}
-          <div className="mb-4">
-            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-indigo-100 text-indigo-800">
-              {category}
-            </span>
+    <div className="group relative bg-white rounded-2xl shadow-sm hover:shadow-lg transition-all duration-300">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: index * 0.1 }}
+      >
+        <Link href={`/blogs/${slug}`} className="block">
+          {/* Image Container */}
+          <div className="relative aspect-[16/9] rounded-t-2xl overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-gray-100 to-gray-200 shimmer" />
           </div>
 
-          {/* Title */}
-          <h3 className="text-xl font-bold text-gray-900 group-hover:text-indigo-600 transition-colors duration-300 line-clamp-2">
-            {title}
-          </h3>
+          {/* Content */}
+          <div className="p-6">
+            {/* Category */}
+            <div className="mb-4">
+              <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-indigo-100 text-indigo-800">
+                {category}
+              </span>
+            </div>
 
-          {/* Description */}
-          <p className="mt-3 text-gray-600 line-clamp-3">
-            {description}
-          </p>
+            {/* Title */}
+            <h3 className="text-xl font-bold text-gray-900 group-hover:text-indigo-600 transition-colors duration-300 line-clamp-2">
+              {title}
+            </h3>
 
-          {/* Read Time */}
-          <div className="mt-4 flex items-center text-gray-500">
-            <FiClock className="w-4 h-4 mr-2" />
-            <span className="text-sm">{readTime}</span>
+            {/* Description */}
+            <p className="mt-3 text-gray-600 line-clamp-3">
+              {description}
+            </p>
+
+            {/* Read Time */}
+            <div className="mt-4 flex items-center text-gray-500">
+              <FiClock className="w-4 h-4 mr-2" />
+              <span className="text-sm">{readTime}</span>
+            </div>
           </div>
-        </div>
-      </Link>
-    </motion.div>
+        </Link>
+      </motion.div>
+    </div>
   );
 }
