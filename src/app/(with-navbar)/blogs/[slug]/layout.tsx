@@ -3,14 +3,12 @@ import { getPostBySlug, getAllSlugs, type BlogPost } from '@/lib/blog';
 import Script from 'next/script';
 import './styles.css';
 
-interface LayoutProps {
-  params: {
-    slug: string;
-  };
+type Props = {
+  params: { slug: string };
   children: React.ReactNode;
 }
 
-export async function generateMetadata({ params }: LayoutProps): Promise<Metadata> {
+export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
   const { slug } = params;
   const post: BlogPost | null = await getPostBySlug(slug);
   
@@ -39,6 +37,6 @@ export function generateStaticParams() {
   return slugs.map((slug) => ({ slug }));
 }
 
-export default function BlogLayout({ params, children }: LayoutProps) {
+export default function BlogLayout({ children, params }: Props) {
   return <>{children}</>;
 }
