@@ -2,15 +2,24 @@ import { getPostBySlug, getAllPosts, type BlogPost } from '@/lib/blog';
 import BlogPostContent from './BlogPostContent';
 import type { Metadata } from 'next';
 
+type Params = {
+  slug: string;
+}
+
+type Props = {
+  params: Promise<Params>;
+}
+
 export async function generateStaticParams() {
-  const posts = getAllPosts();
+  const posts = await getAllPosts();
   return posts.map((post) => ({
     slug: post.slug,
   }));
 }
 
-export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
-  const post = getPostBySlug(params.slug);
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { slug } = await params;
+  const post = await getPostBySlug(slug);
   
   if (!post) {
     return {
@@ -25,18 +34,22 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   };
 }
 
-export default async function BlogPost({ params }: { params: { slug: string } }) {
-  const post = getPostBySlug(params.slug);
+export default async function BlogPost({ params }: Props) {
+  const { slug } = await params;
+  const post = await getPostBySlug(slug);
   
   if (!post) {
-    return null; // or handle 404
+    return (
+      <div>
+        <h1>Post Not Found</h1>
+        <p>The requested blog post could not be found.</p>
+      </div>
+    );
   }
 
-  // Get related posts (excluding current post)
-  const allPosts = getAllPosts();
-  const relatedPosts = allPosts
-    .filter(p => p.slug !== params.slug)
-    .slice(0, 2); // Get up to 2 related posts
+  const relatedPosts = (await getAllPosts())
+    .filter(p => p.slug !== post.slug)
+    .slice(0, 3);
 
   return <BlogPostContent post={post} relatedPosts={relatedPosts} />;
 }
