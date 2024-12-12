@@ -5,7 +5,11 @@ const { URL } = require('url');
 const nextConfig = {
   reactStrictMode: true,
   typescript: {
-    ignoreBuildErrors: true
+    ignoreBuildErrors: false
+  },
+  experimental: {
+    // appDir: true,
+    // manifest: true
   },
   images: {
     domains: ['example.com'], // Replace with your actual image domains
