@@ -15,7 +15,6 @@ const nextConfig = {
     domains: ['example.com'], // Replace with your actual image domains
   },
   webpack: (config, { isServer }) => {
-    console.log('Webpack configuration:', config); // Logging the webpack config
     if (!isServer) {
       config.resolve.fallback = {
         fs: false,
