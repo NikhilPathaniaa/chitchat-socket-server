@@ -30,9 +30,9 @@ const containerVariants: Variants = {
   visible: {
     opacity: 1,
     transition: {
-      staggerChildren: 0.2
-    }
-  }
+      staggerChildren: 0.1,
+    },
+  },
 };
 
 const itemVariants: Variants = {
@@ -41,10 +41,9 @@ const itemVariants: Variants = {
     opacity: 1,
     y: 0,
     transition: {
-      duration: 0.6,
-      ease: "easeOut"
-    }
-  }
+      duration: 0.5,
+    },
+  },
 };
 
 const imageVariants: Variants = {
@@ -77,9 +76,9 @@ export default function BlogPostContent({ post, relatedPosts }: BlogPostContentP
   const scaleX = useSpring(scrollYProgress, {
     stiffness: 100,
     damping: 30,
-    restDelta: 0.001
+    restDelta: 0.001,
   });
-  
+
   const [showScrollTop, setShowScrollTop] = useState(false);
   const scrollProgress = useTransform(scrollYProgress, [0, 1], [0, 100]);
   const [progress, setProgress] = useState(0);
@@ -90,11 +89,15 @@ export default function BlogPostContent({ post, relatedPosts }: BlogPostContentP
   }, [scrollProgress]);
 
   useEffect(() => {
-    const handleScroll = () => {
-      setShowScrollTop(window.scrollY > 400);
-    };
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+    if (typeof window !== 'undefined') {
+      const handleScroll = () => {
+        setShowScrollTop(window.scrollY > 400);
+      };
+      window.addEventListener('scroll', handleScroll);
+      return () => {
+        window.removeEventListener('scroll', handleScroll);
+      };
+    }
   }, []);
 
   const scrollToTop = () => {
@@ -103,7 +106,8 @@ export default function BlogPostContent({ post, relatedPosts }: BlogPostContentP
 
   return (
     <>
-      <motion.div
+      <Box
+        component={motion.div}
         style={{
           position: 'fixed',
           top: 0,
@@ -155,11 +159,12 @@ export default function BlogPostContent({ post, relatedPosts }: BlogPostContentP
             zIndex: 2
           }}>
             {/* Title - Left Side */}
-            <motion.div
+            <Box
+              component={motion.div}
               variants={textVariants}
               initial="hidden"
               animate="visible"
-              style={{ flex: 1, paddingRight: '40px' }}
+              sx={{ flex: 1, paddingRight: '40px' }}
             >
               <Typography
                 variant="h1"
@@ -216,14 +221,15 @@ export default function BlogPostContent({ post, relatedPosts }: BlogPostContentP
                   />
                 ))}
               </Box>
-            </motion.div>
+            </Box>
 
             {/* Image - Right Side */}
-            <motion.div
+            <Box
+              component={motion.div}
               variants={imageVariants}
               initial="hidden"
               animate="visible"
-              style={{
+              sx={{
                 width: '600px',
                 height: '400px',
                 position: 'relative',
@@ -286,7 +292,7 @@ export default function BlogPostContent({ post, relatedPosts }: BlogPostContentP
                   pointerEvents: 'none'
                 }}
               />
-            </motion.div>
+            </Box>
           </Box>
         </Container>
       </Box>
@@ -298,7 +304,8 @@ export default function BlogPostContent({ post, relatedPosts }: BlogPostContentP
           py: 8
         }}
       >
-        <motion.div
+        <Box
+          component={motion.div}
           variants={containerVariants}
           initial="hidden"
           animate="visible"
@@ -419,15 +426,16 @@ export default function BlogPostContent({ post, relatedPosts }: BlogPostContentP
               </Box>
             </Box>
           )}
-        </motion.div>
+        </Box>
       </Container>
 
       {/* Scroll to Top Button */}
-      <motion.div
+      <Box
+        component={motion.div}
         initial={{ opacity: 0 }}
         animate={{ opacity: showScrollTop ? 1 : 0 }}
         transition={{ duration: 0.3 }}
-        style={{
+        sx={{
           position: 'fixed',
           bottom: '2rem',
           right: '2rem',
@@ -447,7 +455,7 @@ export default function BlogPostContent({ post, relatedPosts }: BlogPostContentP
         >
           <KeyboardArrowUpIcon sx={{ color: theme.palette.primary.main }} />
         </IconButton>
-      </motion.div>
+      </Box>
 
       {/* Feedback Button */}
       <Box sx={{ position: 'fixed', bottom: 20, right: 20 }}>

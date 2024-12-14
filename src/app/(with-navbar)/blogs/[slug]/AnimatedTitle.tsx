@@ -8,12 +8,11 @@ interface AnimatedTitleProps {
 
 export default function AnimatedTitle({ title }: AnimatedTitleProps) {
   return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.9 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.5, delay: 0.2 }}
-    >
-      <h1
+    <div>
+      <motion.h1
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.5, delay: 0.2 }}
         style={{
           fontFamily: 'Poppins',
           fontWeight: 800,
@@ -28,7 +27,7 @@ export default function AnimatedTitle({ title }: AnimatedTitleProps) {
         }}
       >
         {title}
-      </h1>
-    </motion.div>
+      </motion.h1>
+    </div>
   );
 }

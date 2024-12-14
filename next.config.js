@@ -5,13 +5,16 @@ const { URL } = require('url');
 const nextConfig = {
   reactStrictMode: true,
   typescript: {
-    ignoreBuildErrors: true
+    ignoreBuildErrors: false
+  },
+  experimental: {
+    // appDir: true,
+    // manifest: true
   },
   images: {
     domains: ['example.com'], // Replace with your actual image domains
   },
   webpack: (config, { isServer }) => {
-    console.log('Webpack configuration:', config); // Logging the webpack config
     if (!isServer) {
       config.resolve.fallback = {
         fs: false,

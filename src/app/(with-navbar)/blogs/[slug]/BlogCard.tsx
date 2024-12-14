@@ -3,63 +3,108 @@
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { FiClock } from 'react-icons/fi';
+import { BlogPost } from '@/lib/blog';
+import { Box, Card, CardContent, Typography, CardActionArea } from '@mui/material';
+import { HTMLMotionProps } from 'framer-motion';
 
 interface BlogCardProps {
-  title: string;
-  description: string;
-  category: string;
-  readTime: string;
-  slug: string;
-  index: number;
+  post: BlogPost;
 }
 
-export default function BlogCard({
-  title,
-  description,
-  category,
-  readTime,
-  slug,
-  index,
-}: BlogCardProps) {
+const MotionCard = motion(Card);
+
+const BlogCard = ({ post }: BlogCardProps) => {
+  const { title, description, category, readTime, slug } = post;
+  
   return (
-    <motion.div
+    <MotionCard
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, delay: index * 0.1 }}
-      className="group relative bg-white rounded-2xl shadow-sm hover:shadow-lg transition-all duration-300"
+      transition={{ duration: 0.3 }}
+      sx={{
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        bgcolor: 'background.paper',
+        borderRadius: 4,
+        '& .MuiCardActionArea-root': {
+          transition: 'transform 0.3s ease-in-out',
+          '&:hover': {
+            transform: 'translateY(-4px)'
+          }
+        }
+      }}
+      elevation={1}
     >
-      <Link href={`/blogs/${slug}`} className="block">
-        {/* Image Container */}
-        <div className="relative aspect-[16/9] rounded-t-2xl overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-gray-100 to-gray-200 shimmer" />
-        </div>
-
-        {/* Content */}
-        <div className="p-6">
-          {/* Category */}
-          <div className="mb-4">
-            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-indigo-100 text-indigo-800">
-              {category}
-            </span>
-          </div>
-
-          {/* Title */}
-          <h3 className="text-xl font-bold text-gray-900 group-hover:text-indigo-600 transition-colors duration-300 line-clamp-2">
+      <CardActionArea
+        component={Link}
+        href={`/blogs/${slug}`}
+        sx={{
+          height: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'flex-start'
+        }}
+      >
+        <CardContent sx={{ p: 3, width: '100%' }}>
+          <Typography
+            variant="overline"
+            sx={{
+              color: 'primary.main',
+              fontWeight: 600,
+              textTransform: 'uppercase',
+              mb: 1,
+              display: 'block'
+            }}
+          >
+            {category}
+          </Typography>
+          
+          <Typography
+            variant="h5"
+            sx={{
+              fontWeight: 700,
+              mb: 2,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              display: '-webkit-box',
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: 'vertical'
+            }}
+          >
             {title}
-          </h3>
-
-          {/* Description */}
-          <p className="mt-3 text-gray-600 line-clamp-3">
+          </Typography>
+          
+          <Typography
+            variant="body2"
+            sx={{
+              color: 'text.secondary',
+              mb: 2,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              display: '-webkit-box',
+              WebkitLineClamp: 3,
+              WebkitBoxOrient: 'vertical'
+            }}
+          >
             {description}
-          </p>
-
-          {/* Read Time */}
-          <div className="mt-4 flex items-center text-gray-500">
-            <FiClock className="w-4 h-4 mr-2" />
-            <span className="text-sm">{readTime}</span>
-          </div>
-        </div>
-      </Link>
-    </motion.div>
+          </Typography>
+          
+          <Box sx={{ 
+            display: 'flex', 
+            alignItems: 'center',
+            color: 'text.secondary',
+            mt: 'auto'
+          }}>
+            <FiClock style={{ marginRight: '0.5rem' }} />
+            <Typography variant="caption">
+              {readTime} min read
+            </Typography>
+          </Box>
+        </CardContent>
+      </CardActionArea>
+    </MotionCard>
   );
-}
+};
+
+export default BlogCard;

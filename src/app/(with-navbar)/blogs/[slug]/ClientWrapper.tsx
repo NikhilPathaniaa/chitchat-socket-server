@@ -15,15 +15,16 @@ export default function ClientWrapper({ post }: ClientWrapperProps) {
   }, []);
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.5 }}
-      className="blog-post-content"
-    >
-      <ReactMarkdown className="prose prose-lg prose-blue">
-        {post.content}
-      </ReactMarkdown>
-    </motion.div>
+    <div className="blog-post-content">
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.5 }}
+      >
+        <ReactMarkdown className="prose prose-lg prose-blue">
+          {post.content}
+        </ReactMarkdown>
+      </motion.div>
+    </div>
   );
 }
