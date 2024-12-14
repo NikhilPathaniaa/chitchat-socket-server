@@ -11,6 +11,10 @@ interface EmojiPickerProps {
 }
 
 const EmojiPicker: React.FC<EmojiPickerProps> = ({ onEmojiSelect }) => {
+  const handleClick = (emoji: string) => {
+    onEmojiSelect(emoji);
+  };
+
   return (
     <Paper
       elevation={3}
@@ -27,23 +31,27 @@ const EmojiPicker: React.FC<EmojiPickerProps> = ({ onEmojiSelect }) => {
       }}
     >
       {EMOJI_LIST.map((emoji) => (
-        <Box
-          key={emoji}
-          component={motion.div}
-          whileHover={{ scale: 1.2 }}
-          whileTap={{ scale: 0.9 }}
-          onClick={() => onEmojiSelect(emoji)}
-          sx={{
-            cursor: 'pointer',
-            p: 0.5,
-            borderRadius: 1,
-            '&:hover': {
-              bgcolor: 'action.hover',
-            },
-          }}
-        >
-          {emoji}
-        </Box>
+        <div key={emoji}>
+          <div
+            onClick={() => handleClick(emoji)}
+            style={{
+              transition: 'transform 0.2s'
+            }}
+          >
+            <Box
+              component={motion.div}
+              whileTap={{ scale: 0.9 }}
+              sx={{
+                cursor: 'pointer',
+                p: 0.5,
+                borderRadius: 1,
+                bgcolor: 'action.hover',
+              }}
+            >
+              {emoji}
+            </Box>
+          </div>
+        </div>
       ))}
     </Paper>
   );

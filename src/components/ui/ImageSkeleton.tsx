@@ -26,17 +26,38 @@ export default function ImageSkeleton({
   return (
     <div className="relative overflow-hidden">
       {isLoading && (
-        <motion.div
-          className="absolute inset-0 bg-gray-200"
-          animate={{
-            opacity: [0.5, 0.8, 0.5],
-          }}
-          transition={{
-            duration: 1.5,
-            repeat: Infinity,
-            ease: "linear"
-          }}
-        />
+        <div className={className}>
+          <div className={className}>
+            <div className={className}>
+              <div className={className}>
+                <div className={className}>
+                  <div className={className}>
+                    <div className={className}>
+                      <div className={className}>
+                        <div className={className}>
+                          <div className={className}>
+                            <div className="absolute inset-0 bg-gray-200">
+                              <motion.div
+                                animate={{
+                                  opacity: [0.5, 0.8, 0.5],
+                                }}
+                                transition={{
+                                  duration: 1.5,
+                                  repeat: Infinity,
+                                  ease: "linear"
+                                }}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
       <Image
         src={src}

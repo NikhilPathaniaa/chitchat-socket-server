@@ -3,11 +3,25 @@
 import { motion } from 'framer-motion';
 import { BlogPost } from '@/lib/blog';
 import BlogCard from './BlogCard';
+import Box from '@mui/material/Box';
+import Typography from '@mui/material/Typography';
 
 interface RelatedPostsProps {
   posts: BlogPost[];
   currentSlug: string;
 }
+
+const fadeInUp = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { 
+    opacity: 1, 
+    y: 0,
+    transition: {
+      duration: 0.5,
+      ease: [0.25, 0.46, 0.45, 0.94]
+    }
+  }
+};
 
 export default function RelatedPosts({ posts, currentSlug }: RelatedPostsProps) {
   const relatedPosts = posts
@@ -15,41 +29,69 @@ export default function RelatedPosts({ posts, currentSlug }: RelatedPostsProps) 
     .slice(0, 3);
 
   return (
-    <section className="py-20 bg-gray-50">
-      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-12">
-          <motion.h2
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="text-3xl sm:text-4xl font-bold text-gray-900"
+    <Box 
+      component="section" 
+      sx={{ 
+        py: 10, 
+        bgcolor: 'grey.50'
+      }}
+    >
+      <Box sx={{ 
+        maxWidth: '1400px', 
+        mx: 'auto', 
+        px: { xs: 2, sm: 3, lg: 4 }
+      }}>
+        <Box sx={{ textAlign: 'center', mb: 6 }}>
+          <Box
+            component={motion.div}
+            variants={fadeInUp}
+            initial="hidden"
+            animate="visible"
           >
-            You might also like
-          </motion.h2>
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-            className="mt-4 text-lg text-gray-600 max-w-2xl mx-auto"
-          >
-            Explore more articles on similar topics to expand your knowledge
-          </motion.p>
-        </div>
+            <Typography
+              variant="h2"
+              sx={{
+                fontSize: { xs: '1.875rem', sm: '2.25rem' },
+                fontWeight: 'bold',
+                color: 'text.primary'
+              }}
+            >
+              You might also like
+            </Typography>
+            <Typography
+              variant="body1"
+              sx={{
+                mt: 2,
+                fontSize: '1.125rem',
+                color: 'text.secondary',
+                maxWidth: '42rem',
+                mx: 'auto'
+              }}
+            >
+              Explore more articles on similar topics to expand your knowledge
+            </Typography>
+          </Box>
+        </Box>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {relatedPosts.map((post, index) => (
+        <Box
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: {
+              xs: '1fr',
+              md: 'repeat(2, 1fr)',
+              lg: 'repeat(3, 1fr)'
+            },
+            gap: 4
+          }}
+        >
+          {relatedPosts.map((post) => (
             <BlogCard
               key={post.slug}
-              index={index}
-              title={post.title}
-              description={post.description}
-              category={post.category}
-              readTime={post.readTime}
-              slug={post.slug}
+              post={post}
             />
           ))}
-        </div>
-      </div>
-    </section>
+        </Box>
+      </Box>
+    </Box>
   );
 }

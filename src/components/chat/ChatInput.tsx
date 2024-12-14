@@ -18,7 +18,7 @@ export default function ChatInput({ privateChat, recipient, onTyping }: ChatInpu
   const [isTyping, setIsTyping] = useState(false);
   const { socket } = useSocket();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const typingTimeoutRef = useRef<NodeJS.Timeout>();
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const handleTyping = () => {
     if (!isTyping) {
