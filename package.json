@@ -7,14 +7,10 @@
   },
   "scripts": {
     "dev": "next dev",
-    "build": "node scripts/generate-sitemap.js && next build",
+    "build": "next build",
+    "build:clean": "rimraf .next dist && next build",
     "start": "next start",
-    "build:clean": "rimraf .next && next build",
-    "build:server": "tsc --project tsconfig.server.json",
-    "server": "npm run build:server && nodemon dist/server/index.js",
-    "server:prod": "npm run build:server && node dist/server/index.js",
-    "lint": "next lint",
-    "prepare": "rimraf .next"
+    "lint": "next lint"
   },
   "dependencies": {
     "@emoji-mart/data": "^1.2.1",

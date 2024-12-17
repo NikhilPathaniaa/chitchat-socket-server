@@ -3,6 +3,8 @@ const path = require('path');
 const { URL } = require('url');
 
 const nextConfig = {
+  output: 'export',
+  distDir: 'dist',
   reactStrictMode: true,
   typescript: {
     ignoreBuildErrors: false
@@ -10,7 +12,6 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  // output: 'export', 
   trailingSlash: true,
   experimental: {
     serverActions: {

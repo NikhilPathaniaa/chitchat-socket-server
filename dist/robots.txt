@@ -1,0 +1,13 @@
+User-Agent: *
+Allow: /
+Allow: /blogs/
+Allow: /about/
+Disallow: /private/
+Disallow: /api/
+Disallow: /*.json$
+Disallow: /settings/
+Disallow: /profile/
+Disallow: /chat/
+
+Host: https://chitchat.com
+Sitemap: https://chitchat.com/sitemap.xml
