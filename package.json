@@ -7,7 +7,7 @@
   },
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "node scripts/generate-sitemap.js && next build",
     "start": "next start",
     "build:clean": "rimraf .next && next build",
     "build:server": "tsc --project tsconfig.server.json",
@@ -74,6 +74,7 @@
     "@types/react-dom": "^19.0.2",
     "@types/socket.io": "^3.0.1",
     "@types/unist": "^3.0.3",
+    "glob": "^11.0.0",
     "rimraf": "^6.0.1"
   }
 }
