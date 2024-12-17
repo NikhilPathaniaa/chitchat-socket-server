@@ -3,26 +3,31 @@ const path = require('path');
 const { URL } = require('url');
 
 const nextConfig = {
+  output: 'export',
+  distDir: 'dist',
   reactStrictMode: true,
   typescript: {
     ignoreBuildErrors: false
   },
-  experimental: {
-    // appDir: true,
-    // manifest: true
-  },
   images: {
-    domains: ['example.com'], // Replace with your actual image domains
+    unoptimized: true,
+  },
+  trailingSlash: true,
+  experimental: {
+    serverActions: {
+      bodySizeLimit: '2mb',
+      allowedOrigins: ['localhost:3000', 'chitchat-blog.vercel.app'],
+    },
   },
   webpack: (config, { isServer }) => {
     if (!isServer) {
       config.resolve.fallback = {
         fs: false,
         net: false,
-        tls: false
+        tls: false,
+        dns: false,
       };
     }
-    // Custom webpack configurations if needed
     return config;
   }
 };

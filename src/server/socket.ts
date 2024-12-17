@@ -1,6 +1,6 @@
 import { Server, Socket } from 'socket.io';
 import { Server as HTTPServer } from 'http';
-import { DefaultEventsMap } from 'socket.io/dist/typed-events';
+import type { DefaultEventsMap } from '@socket.io/component-emitter';
 import { v4 as uuidv4 } from 'uuid';
 
 export interface SocketWithAuth extends Socket {
