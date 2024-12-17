@@ -8,7 +8,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "build:clean": "rimraf .next dist && next build",
+    "build:clean": "rimraf .next out && next build",
     "start": "next start",
     "lint": "next lint"
   },

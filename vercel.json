@@ -1,22 +1,20 @@
 {
   "version": 2,
-  "buildCommand": "npm run build",
-  "outputDirectory": "dist",
-  "framework": "nextjs",
-  "cleanUrls": false,
-  "env": {
-    "NEXT_PUBLIC_SOCKET_URL": "https://chitchat-socket-server.onrender.com",
-    "NODE_VERSION": "18.x"
-  },
-  "build": {
-    "env": {
-      "NODE_VERSION": "18.x"
+  "builds": [
+    {
+      "src": "package.json",
+      "use": "@vercel/static-build"
     }
-  },
+  ],
   "routes": [
     {
       "src": "/(.*)",
-      "dest": "/"
+      "dest": "out/$1"
     }
-  ]
+  ],
+  "outputDirectory": "out",
+  "env": {
+    "NEXT_PUBLIC_SOCKET_URL": "https://chitchat-socket-server.onrender.com",
+    "NODE_VERSION": "18.x"
+  }
 }
