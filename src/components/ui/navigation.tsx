@@ -75,7 +75,7 @@ function ScrollProgress() {
       <Zoom in={showButton}>
         <Fab
           color="primary"
-          size="small"
+          size="large"
           onClick={scrollToTop}
           sx={{
             position: 'fixed',
