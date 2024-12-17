@@ -19,6 +19,9 @@ const nextConfig = {
       allowedOrigins: ['localhost:3000', 'chitchat-blog.vercel.app'],
     },
   },
+  generateBuildId: async () => {
+    return 'build-' + Date.now()
+  },
   webpack: (config, { isServer }) => {
     if (!isServer) {
       config.resolve.fallback = {
