@@ -8,15 +8,15 @@ const nextConfig = {
     ignoreBuildErrors: false
   },
   images: {
-    domains: ['example.com'], // Replace with your actual image domains
-    unoptimized: true
+    unoptimized: true,
   },
-  output: 'export',
+  // output: 'export', 
   trailingSlash: true,
   experimental: {
     serverActions: {
-      bodySizeLimit: '2mb'
-    }
+      bodySizeLimit: '2mb',
+      allowedOrigins: ['localhost:3000', 'chitchat-blog.vercel.app'],
+    },
   },
   webpack: (config, { isServer }) => {
     if (!isServer) {
