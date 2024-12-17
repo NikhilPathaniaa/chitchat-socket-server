@@ -7,22 +7,23 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: false
   },
-  experimental: {
-    // appDir: true,
-    // manifest: true
-  },
   images: {
     domains: ['example.com'], // Replace with your actual image domains
+  },
+  experimental: {
+    serverActions: {
+      bodySizeLimit: '2mb'
+    }
   },
   webpack: (config, { isServer }) => {
     if (!isServer) {
       config.resolve.fallback = {
         fs: false,
         net: false,
-        tls: false
+        tls: false,
+        dns: false,
       };
     }
-    // Custom webpack configurations if needed
     return config;
   }
 };
