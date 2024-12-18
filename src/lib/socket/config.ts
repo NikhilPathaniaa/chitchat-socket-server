@@ -1,14 +1,16 @@
-export const SOCKET_URL = process.env.NODE_ENV === 'production' 
-  ? 'https://chitchat-socket-server.onrender.com'
-  : 'http://localhost:3001';
+import { io } from 'socket.io-client';
 
-export const SOCKET_CONFIG = {
+const SOCKET_SERVER_URL = process.env.NEXT_PUBLIC_SOCKET_SERVER_URL || 'https://chitchat-socket-server.onrender.com';
+
+const socket = io(SOCKET_SERVER_URL, {
+  transports: ['websocket', 'polling'],
+  path: '/socket.io/',
+  secure: true,
+  rejectUnauthorized: false,
   reconnection: true,
   reconnectionAttempts: 5,
   reconnectionDelay: 1000,
-  reconnectionDelayMax: 5000,
-  timeout: 20000,
-  transports: ['websocket', 'polling'],
-  forceNew: true,
-  path: '/socket.io/',
-};
+  timeout: 10000
+});
+
+export default socket;
