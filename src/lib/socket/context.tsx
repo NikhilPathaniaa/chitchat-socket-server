@@ -98,9 +98,12 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         reconnection: true,
         reconnectionAttempts: 10,
         reconnectionDelay: 1000,
-        timeout: 15000,
+        reconnectionDelayMax: 5000,
+        randomizationFactor: 0.5,
+        timeout: 20000,
         forceNew: true,
         withCredentials: false,
+        multiplex: false
       }) as SocketWithAuth & { auth: NonNullable<SocketWithAuth['auth']> };
 
       // Enhanced connection event handling
@@ -142,6 +145,17 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         (window as any).socket = null;
         
         return false;
+      });
+
+      // Reconnection tracking
+      newSocket.io.on('reconnect', (attempt) => {
+        console.log(`Reconnected to socket server after ${attempt} attempts`);
+        toast.success('Reconnected to chat server');
+      });
+
+      newSocket.io.on('reconnect_error', (error) => {
+        console.error('Reconnection error:', error);
+        toast.error('Failed to reconnect to chat server');
       });
 
       return true;
